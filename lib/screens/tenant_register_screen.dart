@@ -333,7 +333,7 @@ class _TenantRegisterScreenState
           'first_name': _nameController.text.trim(),
           'last_name': _surnameController.text.trim(),
           'phone': _phoneController.text.trim(),
-          'role': 'tenant',
+          'account_type': 'tenant',
 
           'birth_date': _birthDateController.text.trim(),
           'gender': _gender,
