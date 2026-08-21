@@ -7,9 +7,9 @@ import 'screens/welcome_screen.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Supabase.initialize(
+  var supabase = await Supabase.initialize(
     url: 'https://ejktuacvujbzpjzxopoi.supabase.co',
-    anonKey: 'sb_publishable_ruzBXCXH7wx1S8lVOO9KzA_VYSpWm5s',
+    anonKey: 'sb_publishable_ruzBXCxH7wx1S8lVOO9KzA_VYSpWm5s',
   );
 
   runApp(const CohabiApp());
