@@ -4,6 +4,7 @@ import '../../../core/navigation/tenant_navigation.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/tenant_bottom_navigation.dart';
 import '../../selection/services/tenant_selection_service.dart';
+import '../results/screens/tenant_best_matches_screen.dart';
 import '../widgets/selection_widgets.dart';
 
 class TenantSelectionScreen extends StatefulWidget {
@@ -544,7 +545,13 @@ class _TenantSelectionScreenState extends State<TenantSelectionScreen> {
             child: SelectionPrimaryButton(
               text: 'Ver mis mejores opciones',
               onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Los resultados de matching serán el siguiente módulo.'), behavior: SnackBarBehavior.floating));
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const TenantBestMatchesScreen(),
+                  ),
+                  (_) => false,
+                );
               },
             ),
           ),

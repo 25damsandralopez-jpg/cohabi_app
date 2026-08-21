@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../features/selection/screens/tenant_selection_screen.dart';
+import '../../features/selection/screens/tenant_selection_gate_screen.dart';
 import '../../screens/account_screen.dart';
 import '../../screens/tenant_home_screen.dart';
 
@@ -16,7 +16,7 @@ void handleTenantNavigation(BuildContext context, int index) {
     case 1:
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (_) => const TenantSelectionScreen()),
+        MaterialPageRoute(builder: (_) => const TenantSelectionGateScreen()),
         (_) => false,
       );
       return;
