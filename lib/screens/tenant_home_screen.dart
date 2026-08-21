@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../core/theme/app_colors.dart';
+import '../core/navigation/tenant_navigation.dart';
+import '../core/widgets/tenant_bottom_navigation.dart';
 
 class TenantHomeScreen extends StatelessWidget {
   const TenantHomeScreen({super.key});
@@ -315,7 +317,13 @@ class TenantHomeScreen extends StatelessWidget {
             // NAVEGACIÓN
             // ================================================
 
-            const _TenantBottomNav(),
+            TenantBottomNavigation(
+              currentIndex: 0,
+              onTap: (index) {
+                if (index == 0) return;
+                handleTenantNavigation(context, index);
+              },
+            ),
           ],
         ),
       ),
@@ -430,112 +438,6 @@ class _QuickActionCard extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-
-// ============================================================
-// BARRA INFERIOR
-// ============================================================
-
-class _TenantBottomNav extends StatelessWidget {
-  const _TenantBottomNav();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.only(
-        top: 11,
-        bottom: 8,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: const Border(
-          top: BorderSide(
-            color: CohabiColors.border,
-          ),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.035),
-            blurRadius: 15,
-            offset: const Offset(0, -5),
-          ),
-        ],
-      ),
-      child: const Row(
-        mainAxisAlignment:
-        MainAxisAlignment.spaceAround,
-        children: [
-          _NavItem(
-            icon: Icons.home_rounded,
-            text: 'Inicio',
-            selected: true,
-          ),
-          _NavItem(
-            icon: Icons.auto_awesome_outlined,
-            text: 'Selección',
-          ),
-          _NavItem(
-            icon: Icons.assignment_outlined,
-            text: 'Solicitudes',
-          ),
-          _NavItem(
-            icon: Icons.home_work_outlined,
-            text: 'Mi Casa',
-          ),
-          _NavItem(
-            icon: Icons.person_outline_rounded,
-            text: 'Cuenta',
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-
-class _NavItem extends StatelessWidget {
-  final IconData icon;
-  final String text;
-  final bool selected;
-
-  const _NavItem({
-    required this.icon,
-    required this.text,
-    this.selected = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final color = selected
-        ? CohabiColors.purple
-        : CohabiColors.textSecondary;
-
-    return SizedBox(
-      width: 70,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            color: color,
-            size: 27,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            text,
-            style: TextStyle(
-              color: color,
-              fontSize: 11,
-              fontWeight: selected
-                  ? FontWeight.w800
-                  : FontWeight.w600,
-            ),
-          ),
-        ],
       ),
     );
   }

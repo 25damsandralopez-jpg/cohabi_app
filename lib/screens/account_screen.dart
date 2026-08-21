@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/theme/app_colors.dart';
-import '../core/widgets/cohabi_bottom_navigation.dart';
+import '../core/navigation/owner_navigation.dart';
+import '../core/navigation/tenant_navigation.dart';
+import '../core/widgets/owner_bottom_navigation.dart';
+import '../core/widgets/tenant_bottom_navigation.dart';
 import '../core/widgets/cohabi_snackbar.dart';
 import '../features/account/models/account_state.dart';
 import '../features/account/services/account_service.dart';
@@ -198,16 +201,6 @@ class _AccountScreenState extends State<AccountScreen> {
     if (mounted) await _loadAccount();
   }
 
-  void _onTenantNavigation(int index) {
-    if (index == 0) {
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const TenantHomeScreen()),
-        (_) => false,
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -304,11 +297,20 @@ class _AccountScreenState extends State<AccountScreen> {
         ),
       ),
       bottomNavigationBar: account.isTenant
-          ? CohabiBottomNavigation(
+          ? TenantBottomNavigation(
               currentIndex: 4,
-              onTap: _onTenantNavigation,
+              onTap: (index) {
+                if (index == 4) return;
+                handleTenantNavigation(context, index);
+              },
             )
-          : null,
+          : OwnerBottomNavigation(
+              currentIndex: 4,
+              onTap: (index) {
+                if (index == 4) return;
+                handleOwnerNavigation(context, index);
+              },
+            ),
     );
   }
 }

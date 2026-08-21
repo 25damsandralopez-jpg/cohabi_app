@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/theme/app_colors.dart';
+import '../core/navigation/owner_navigation.dart';
+import '../core/widgets/owner_bottom_navigation.dart';
 import 'property_register_screen.dart';
 
 class PropertiesDashboardScreen extends StatefulWidget {
@@ -248,6 +250,13 @@ class _PropertiesDashboardScreenState
             ],
           ),
         ),
+      ),
+      bottomNavigationBar: OwnerBottomNavigation(
+        currentIndex: 1,
+        onTap: (index) {
+          if (index == 1) return;
+          handleOwnerNavigation(context, index);
+        },
       ),
     );
   }
