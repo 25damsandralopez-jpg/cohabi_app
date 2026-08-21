@@ -720,6 +720,7 @@ class _PropertyFeaturesScreenState extends State<PropertyFeaturesScreen> {
           MaterialPageRoute(
             builder: (context) => PropertyPhotosScreen(
               propertyId: widget.propertyId,
+              roomCount: widget.roomCount,
             ),
           ),
         );

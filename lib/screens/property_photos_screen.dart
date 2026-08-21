@@ -3,15 +3,18 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'property_rooms_screen.dart';
 
 import '../core/theme/app_colors.dart';
 
 class PropertyPhotosScreen extends StatefulWidget {
   final String propertyId;
+  final int roomCount;
 
   const PropertyPhotosScreen({
     super.key,
     required this.propertyId,
+    required this.roomCount,
   });
 
   @override
@@ -69,6 +72,7 @@ class _PropertyPhotosScreenState extends State<PropertyPhotosScreen> {
           behavior: SnackBarBehavior.floating,
         ),
       );
+
       return;
     }
 
@@ -250,8 +254,15 @@ class _PropertyPhotosScreenState extends State<PropertyPhotosScreen> {
         ),
       );
 
-      // De momento no navegamos al Paso 4.
-      // Lo conectaremos cuando creemos esa pantalla.
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PropertyRoomsScreen(
+            propertyId: widget.propertyId,
+            roomCount: widget.roomCount,
+          ),
+        ),
+      );
 
     } catch (error) {
       if (!mounted) return;

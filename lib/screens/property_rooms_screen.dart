@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/theme/app_colors.dart';
+import 'room_features_screen.dart';
 
 class PropertyRoomsScreen extends StatefulWidget {
   final String propertyId;
   final int roomCount;
+  final int initialRoomIndex;
 
   const PropertyRoomsScreen({
     super.key,
     required this.propertyId,
     required this.roomCount,
+    this.initialRoomIndex = 0,
   });
 
   @override
@@ -41,6 +45,8 @@ class _PropertyRoomsScreenState extends State<PropertyRoomsScreen> {
   @override
   void initState() {
     super.initState();
+
+    _selectedRoom = widget.initialRoomIndex;
 
     _rooms = List.generate(
       widget.roomCount,
@@ -99,39 +105,103 @@ class _PropertyRoomsScreenState extends State<PropertyRoomsScreen> {
         room.maximumStay != null;
   }
 
-  void _continue() {
+  Future<void> _continue() async {
     FocusScope.of(context).unfocus();
 
-    for (int i = 0; i < _rooms.length; i++) {
-      if (!_roomIsComplete(_rooms[i])) {
-        setState(() {
-          _selectedRoom = i;
-        });
+    final room = _rooms[_selectedRoom];
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Completa todos los campos de la habitación ${i + 1}.',
-            ),
-            behavior: SnackBarBehavior.floating,
+    // 1. Comprobamos que la habitación actual esté completa
+    if (!_roomIsComplete(room)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Completa todos los campos de la habitación ${_selectedRoom + 1}.',
           ),
-        );
-
-        return;
-      }
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Paso 4 completado correctamente.',
+    try {
+      // 2. Preparamos los datos de esta habitación
+      final roomData = {
+        'property_id': widget.propertyId,
+        'room_number': _selectedRoom + 1,
+        'status': room.isAvailable ? 'Disponible' : 'Ocupada',
+        'available_from':
+        room.availableFrom!.toIso8601String().split('T').first,
+        'monthly_price': double.parse(
+          room.monthlyPrice.text.trim().replaceAll(',', '.'),
         ),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+        'deposit': double.parse(
+          room.deposit.text.trim().replaceAll(',', '.'),
+        ),
+        'reservation_price': double.parse(
+          room.bookingAmount.text.trim().replaceAll(',', '.'),
+        ),
+        'min_stay': room.minimumStay,
+        'max_stay': room.maximumStay,
+        'max_people': room.maxPeople,
+        'area_m2': double.parse(
+          room.surface.text.trim().replaceAll(',', '.'),
+        ),
+      };
 
-    // Aquí conectaremos después el guardado en Supabase
-    // y la navegación al Paso 5.
+      // 3. Si todavía no existe en Supabase, la creamos.
+      if (room.roomId == null) {
+        final insertedRoom = await Supabase.instance.client
+            .from('rooms')
+            .insert(roomData)
+            .select('id')
+            .single();
+
+        room.roomId = insertedRoom['id'] as String;
+      } else {
+        // Si ya existía, actualizamos la misma habitación.
+        await Supabase.instance.client
+            .from('rooms')
+            .update(roomData)
+            .eq('id', room.roomId!);
+      }
+
+      if (!mounted) return;
+
+      // 4. Vamos a las características DE ESTA habitación.
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => RoomFeaturesScreen(
+            propertyId: widget.propertyId,
+            roomCount: widget.roomCount,
+            roomIndex: _selectedRoom,
+            roomId: room.roomId!,
+          ),
+        ),
+      );
+    } on FormatException {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Revisa los campos numéricos. Introduce solo números.',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'No se pudo guardar la habitación: $error',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   @override
@@ -868,6 +938,7 @@ class _FieldBlock extends StatelessWidget {
 }
 
 class _RoomData {
+  String? roomId;
   bool isAvailable = true;
 
   DateTime? availableFrom;
