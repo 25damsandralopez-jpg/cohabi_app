@@ -248,7 +248,7 @@ class _OwnerRegisterScreenState
           'phone':
               _phoneController.text.trim(),
 
-          'role': 'owner',
+          'account_type': 'owner',
 
           'city':
               _cityController.text.trim(),
