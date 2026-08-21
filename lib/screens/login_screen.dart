@@ -72,7 +72,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       final profile = await supabase
           .from('profiles')
-          .select('role')
+          .select('active_mode')
           .eq('id', user.id)
           .single();
 
