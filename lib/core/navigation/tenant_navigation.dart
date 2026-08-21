@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../features/selection/screens/tenant_selection_screen.dart';
 import '../../screens/account_screen.dart';
 import '../../screens/tenant_home_screen.dart';
 
@@ -13,7 +14,11 @@ void handleTenantNavigation(BuildContext context, int index) {
       );
       return;
     case 1:
-      _showComingSoon(context, 'Selección');
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const TenantSelectionScreen()),
+        (_) => false,
+      );
       return;
     case 2:
       _showComingSoon(context, 'Solicitudes');
