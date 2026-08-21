@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'screens/owner_account_created_screen.dart';
 
 import 'core/theme/app_colors.dart';
 import 'screens/welcome_screen.dart';
@@ -10,7 +9,7 @@ Future<void> main() async {
 
   await Supabase.initialize(
     url: 'https://ejktuacvujbzpjzxopoi.supabase.co',
-    anonKey: 'sb_publishable_ruzBXCxH7wx1S8lVOO9KzA_VYSpWm5s',
+    anonKey: 'sb_publishable_ruzBXCXH7wx1S8lVOO9KzA_VYSpWm5s',
   );
 
   runApp(const CohabiApp());
@@ -31,7 +30,7 @@ class CohabiApp extends StatelessWidget {
           seedColor: CohabiColors.purple,
         ),
       ),
-      home: const OwnerAccountCreatedScreen(),
+      home: const WelcomeScreen(),
     );
   }
 }
