@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../core/theme/app_colors.dart';
 import 'login_screen.dart';
 import 'owner_register_screen.dart';
+import 'tenant_register_screen.dart';
 
 class AccountTypeScreen extends StatelessWidget {
   const AccountTypeScreen({super.key});
@@ -120,6 +121,7 @@ class AccountTypeScreen extends StatelessWidget {
 
               const SizedBox(height: 30),
 
+              // PROPIETARIO
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: _AccountTypeCard(
@@ -142,6 +144,7 @@ class AccountTypeScreen extends StatelessWidget {
 
               const SizedBox(height: 18),
 
+              // INQUILINO
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: _AccountTypeCard(
@@ -152,7 +155,12 @@ class AccountTypeScreen extends StatelessWidget {
                   color: CohabiColors.purple,
                   background: CohabiColors.purpleSoft,
                   onTap: () {
-                    debugPrint('Registro inquilino');
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const TenantRegisterScreen(),
+                      ),
+                    );
                   },
                 ),
               ),
