@@ -67,24 +67,24 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       // --------------------------------------------------------
-      // 2. LEER ROLE DESDE PROFILES
+      // 2. LEER ACTIVE_MODE DESDE PROFILES
       // --------------------------------------------------------
 
       final profile = await supabase
           .from('profiles')
-          .select('role')
+          .select('active_mode')
           .eq('id', user.id)
           .single();
 
-      final role = profile['role']?.toString();
+      final activeMode = profile['active_mode']?.toString();
 
       if (!mounted) return;
 
       // --------------------------------------------------------
-      // 3. NAVEGACIÓN SEGÚN TIPO DE CUENTA
+      // 3. NAVEGACIÓN SEGÚN MODO ACTIVO
       // --------------------------------------------------------
 
-      if (role == 'tenant') {
+      if (activeMode == 'tenant') {
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(
@@ -97,7 +97,7 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      if (role == 'owner') {
+      if (activeMode == 'owner') {
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(
@@ -111,7 +111,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       _showError(
-        'La cuenta no tiene un tipo de usuario válido.',
+        'La cuenta no tiene un modo activo válido.',
       );
     } on AuthException catch (error) {
       if (!mounted) return;

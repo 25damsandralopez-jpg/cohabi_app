@@ -1,18 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'owner_account_created_screen.dart';
 
 import '../core/theme/app_colors.dart';
+import 'owner_account_created_screen.dart';
 
 class OwnerRegisterScreen extends StatefulWidget {
   const OwnerRegisterScreen({super.key});
 
   @override
-  State<OwnerRegisterScreen> createState() => _OwnerRegisterScreenState();
+  State<OwnerRegisterScreen> createState() =>
+      _OwnerRegisterScreenState();
 }
 
-class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
+class _OwnerRegisterScreenState
+    extends State<OwnerRegisterScreen> {
   int _currentStep = 0;
+
+  // ============================================================
+  // CONTROLADORES
+  // ============================================================
 
   final _nameController = TextEditingController();
   final _surnameController = TextEditingController();
@@ -26,6 +32,10 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
   final _cityController = TextEditingController();
   final _provinceController = TextEditingController();
 
+  // ============================================================
+  // DATOS
+  // ============================================================
+
   String _ownerType = 'Particular';
   String _language = 'Español';
 
@@ -35,8 +45,15 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
   bool _privacyAccepted = true;
   bool _termsAccepted = true;
   bool _serviceCommunicationAccepted = true;
+
   bool _dataSharingAccepted = true;
   bool _marketingAccepted = false;
+
+  bool _isCreatingAccount = false;
+
+  // ============================================================
+  // DISPOSE
+  // ============================================================
 
   @override
   void dispose() {
@@ -46,15 +63,24 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
     _phoneController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+
     _companyController.dispose();
     _documentController.dispose();
     _cityController.dispose();
     _provinceController.dispose();
+
     super.dispose();
   }
 
+  // ============================================================
+  // SIGUIENTE PASO
+  // ============================================================
+
   void _nextStep() {
-    // PASO 1 — Datos personales
+    // ==========================================================
+    // PASO 1 — DATOS PERSONALES
+    // ==========================================================
+
     if (_currentStep == 0) {
       if (_nameController.text.trim().isEmpty ||
           _surnameController.text.trim().isEmpty ||
@@ -62,50 +88,74 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
           _phoneController.text.trim().isEmpty ||
           _passwordController.text.isEmpty ||
           _confirmPasswordController.text.isEmpty) {
-        _showError('Completa todos los campos obligatorios.');
+        _showError(
+          'Completa todos los campos obligatorios.',
+        );
         return;
       }
 
-      if (!_emailController.text.contains('@')) {
-        _showError('Introduce un correo electrónico válido.');
+      if (!_emailController.text.trim().contains('@')) {
+        _showError(
+          'Introduce un correo electrónico válido.',
+        );
         return;
       }
 
       if (_passwordController.text.length < 8) {
-        _showError('La contraseña debe tener al menos 8 caracteres.');
+        _showError(
+          'La contraseña debe tener al menos 8 caracteres.',
+        );
         return;
       }
 
-      if (_passwordController.text != _confirmPasswordController.text) {
-        _showError('Las contraseñas no coinciden.');
+      if (_passwordController.text !=
+          _confirmPasswordController.text) {
+        _showError(
+          'Las contraseñas no coinciden.',
+        );
         return;
       }
     }
 
-    // PASO 2 — Información del propietario
+    // ==========================================================
+    // PASO 2 — INFORMACIÓN DEL PROPIETARIO
+    // ==========================================================
+
     if (_currentStep == 1) {
       if (_documentController.text.trim().isEmpty ||
           _cityController.text.trim().isEmpty ||
           _provinceController.text.trim().isEmpty) {
-        _showError('Completa los campos obligatorios.');
+        _showError(
+          'Completa los campos obligatorios.',
+        );
         return;
       }
 
       if ((_ownerType == 'Empresa' ||
-          _ownerType == 'Agencia inmobiliaria') &&
+              _ownerType == 'Agencia inmobiliaria') &&
           _companyController.text.trim().isEmpty) {
-        _showError('Introduce el nombre de la empresa.');
+        _showError(
+          'Introduce el nombre de la empresa.',
+        );
         return;
       }
     }
 
-    // PASO 3 — Verificación opcional
+    // ==========================================================
+    // PASO 3 — VERIFICACIÓN OPCIONAL
+    // ==========================================================
+
     if (_currentStep == 2) {
       setState(() {
         _currentStep++;
       });
+
       return;
     }
+
+    // ==========================================================
+    // CAMBIAR PASO
+    // ==========================================================
 
     if (_currentStep < 3) {
       setState(() {
@@ -113,8 +163,30 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
       });
     }
   }
+
+  // ============================================================
+  // PASO ANTERIOR
+  // ============================================================
+
+  void _previousStep() {
+    if (_currentStep > 0) {
+      setState(() {
+        _currentStep--;
+      });
+
+      return;
+    }
+
+    Navigator.pop(context);
+  }
+
+  // ============================================================
+  // ERROR
+  // ============================================================
+
   void _showError(String message) {
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context)
+        .hideCurrentSnackBar();
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -125,72 +197,184 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
       ),
     );
   }
+
+  // ============================================================
+  // CREAR CUENTA SUPABASE
+  // ============================================================
+
   Future<void> _createAccount() async {
+    // ==========================================================
+    // CONSENTIMIENTOS OBLIGATORIOS
+    // ==========================================================
+
     if (!_privacyAccepted ||
         !_termsAccepted ||
         !_serviceCommunicationAccepted) {
       _showError(
-        'Debes aceptar la Política de Privacidad, los Términos y las comunicaciones del servicio.',
+        'Debes aceptar la Política de Privacidad, '
+        'los Términos y las comunicaciones del servicio.',
       );
+
       return;
     }
 
+    // Evitar varias peticiones al pulsar varias veces.
+    if (_isCreatingAccount) {
+      return;
+    }
+
+    setState(() {
+      _isCreatingAccount = true;
+    });
+
     try {
       final supabase = Supabase.instance.client;
+
+      // ========================================================
+      // AUTH
+      // ========================================================
 
       final response = await supabase.auth.signUp(
         email: _emailController.text.trim(),
         password: _passwordController.text,
         emailRedirectTo: 'cohabi://login-callback/',
         data: {
-          'first_name': _nameController.text.trim(),
-          'last_name': _surnameController.text.trim(),
-          'phone': _phoneController.text.trim(),
-          'role': 'owner',
-          'city': _cityController.text.trim(),
-          'province': _provinceController.text.trim(),
-          'language': _language,
-          'owner_type': _ownerType,
-          'company_name': _companyController.text.trim(),
-          'document_number': _documentController.text.trim(),
+          'first_name':
+              _nameController.text.trim(),
+
+          'last_name':
+              _surnameController.text.trim(),
+
+          'phone':
+              _phoneController.text.trim(),
+
+          'account_type': 'owner',
+
+          'city':
+              _cityController.text.trim(),
+
+          'province':
+              _provinceController.text.trim(),
+
+          'language':
+              _language,
+
+          'owner_type':
+              _ownerType,
+
+          'company_name':
+              _companyController.text.trim(),
+
+          'document_number':
+              _documentController.text.trim(),
         },
       );
 
       final user = response.user;
 
       if (user == null) {
-        _showError('No se ha podido crear la cuenta.');
-        return;
+        throw Exception(
+          'No se ha podido crear la cuenta.',
+        );
       }
 
       if (!mounted) return;
 
+      // ========================================================
+      // CUENTA CREADA
+      // ========================================================
+
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
-          builder: (context) => const OwnerAccountCreatedScreen(),
+          builder: (context) =>
+              const OwnerAccountCreatedScreen(),
         ),
-            (route) => false,
+        (route) => false,
       );
-    } on AuthException catch (error) {
+    }
+
+    // ==========================================================
+    // ERROR AUTH
+    // ==========================================================
+
+    on AuthException catch (error) {
       if (!mounted) return;
-      _showError(error.message);
-    } catch (error) {
+
+      _showError(
+        _translateAuthError(error.message),
+      );
+    }
+
+    // ==========================================================
+    // ERROR GENERAL
+    // ==========================================================
+
+    catch (error) {
       if (!mounted) return;
+
       _showError(
         'Ha ocurrido un error al crear la cuenta: $error',
       );
     }
-  }
-  void _previousStep() {
-    if (_currentStep > 0) {
-      setState(() {
-        _currentStep--;
-      });
-    } else {
-      Navigator.pop(context);
+
+    // ==========================================================
+    // FINAL
+    // ==========================================================
+
+    finally {
+      if (mounted) {
+        setState(() {
+          _isCreatingAccount = false;
+        });
+      }
     }
   }
+
+  // ============================================================
+  // TRADUCIR ERRORES AUTH
+  // ============================================================
+
+  String _translateAuthError(String message) {
+    final error = message.toLowerCase();
+
+    if (error.contains(
+      'user already registered',
+    )) {
+      return 'Ya existe una cuenta con este correo electrónico.';
+    }
+
+    if (error.contains(
+      'email address is invalid',
+    )) {
+      return 'El correo electrónico no es válido.';
+    }
+
+    if (error.contains(
+      'password should be',
+    )) {
+      return 'La contraseña no cumple los requisitos de seguridad.';
+    }
+
+    if (error.contains(
+      'signup is disabled',
+    )) {
+      return 'El registro de usuarios está desactivado temporalmente.';
+    }
+
+    if (error.contains(
+      'email rate limit exceeded',
+    )) {
+      return 'Se han realizado demasiados intentos. '
+          'Inténtalo de nuevo más tarde.';
+    }
+
+    return message;
+  }
+
+  // ============================================================
+  // BUILD
+  // ============================================================
 
   @override
   Widget build(BuildContext context) {
@@ -201,15 +385,24 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
           child: Column(
             children: [
               _buildHeader(),
+
               const SizedBox(height: 20),
+
               _buildStepBadge(),
+
               const SizedBox(height: 10),
+
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 22),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 22,
+                ),
                 child: _buildCurrentStep(),
               ),
+
               const SizedBox(height: 18),
+
               _buildDots(),
+
               const SizedBox(height: 28),
             ],
           ),
@@ -217,6 +410,10 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
       ),
     );
   }
+
+  // ============================================================
+  // HEADER
+  // ============================================================
 
   Widget _buildHeader() {
     return Stack(
@@ -226,16 +423,24 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 90),
+                padding:
+                    const EdgeInsets.symmetric(
+                  horizontal: 90,
+                ),
                 child: Image.asset(
                   'assets/images/cohabi_logo.png',
                   width: 200,
                   fit: BoxFit.contain,
                 ),
               ),
+
               const SizedBox(height: 8),
+
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 28),
+                padding:
+                    const EdgeInsets.symmetric(
+                  horizontal: 28,
+                ),
                 child: RichText(
                   textAlign: TextAlign.center,
                   text: const TextSpan(
@@ -244,27 +449,37 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
                       fontSize: 13,
                     ),
                     children: [
-                      TextSpan(text: 'Alquila con '),
+                      TextSpan(
+                        text: 'Alquila con ',
+                      ),
                       TextSpan(
                         text: 'confianza',
                         style: TextStyle(
-                          color: CohabiColors.turquoise,
-                          fontWeight: FontWeight.w600,
+                          color:
+                              CohabiColors.turquoise,
+                          fontWeight:
+                              FontWeight.w600,
                         ),
                       ),
-                      TextSpan(text: ', gestiona con '),
+                      TextSpan(
+                        text: ', gestiona con ',
+                      ),
                       TextSpan(
                         text: 'facilidad.',
                         style: TextStyle(
-                          color: CohabiColors.purple,
-                          fontWeight: FontWeight.w600,
+                          color:
+                              CohabiColors.purple,
+                          fontWeight:
+                              FontWeight.w600,
                         ),
                       ),
                     ],
                   ),
                 ),
               ),
+
               const SizedBox(height: 18),
+
               Container(
                 height: 26,
                 width: double.infinity,
@@ -282,11 +497,14 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
             ],
           ),
         ),
+
         Positioned(
           left: 8,
           top: 8,
           child: IconButton(
-            onPressed: _previousStep,
+            onPressed: _isCreatingAccount
+                ? null
+                : _previousStep,
             icon: const Icon(
               Icons.arrow_back_ios_new_rounded,
               color: CohabiColors.navy,
@@ -297,6 +515,10 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
       ],
     );
   }
+
+  // ============================================================
+  // BADGE PASO
+  // ============================================================
 
   Widget _buildStepBadge() {
     return Container(
@@ -319,20 +541,32 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
     );
   }
 
+  // ============================================================
+  // PASO ACTUAL
+  // ============================================================
+
   Widget _buildCurrentStep() {
     switch (_currentStep) {
       case 0:
         return _buildPersonalDataStep();
+
       case 1:
         return _buildOwnerInfoStep();
+
       case 2:
         return _buildVerificationStep();
+
       case 3:
         return _buildTermsStep();
+
       default:
         return const SizedBox.shrink();
     }
   }
+
+  // ============================================================
+  // PASO 1
+  // ============================================================
 
   Widget _buildPersonalDataStep() {
     return Column(
@@ -345,7 +579,9 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
             fontWeight: FontWeight.w800,
           ),
         ),
+
         const SizedBox(height: 6),
+
         const Text(
           'Cuéntanos quién eres.',
           style: TextStyle(
@@ -353,6 +589,7 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
             fontSize: 14,
           ),
         ),
+
         const SizedBox(height: 24),
 
         _buildField(
@@ -360,6 +597,7 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
           hint: 'Nombre',
           icon: Icons.person_outline_rounded,
         ),
+
         const SizedBox(height: 12),
 
         _buildField(
@@ -367,14 +605,17 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
           hint: 'Apellidos',
           icon: Icons.person_outline_rounded,
         ),
+
         const SizedBox(height: 12),
 
         _buildField(
           controller: _emailController,
           hint: 'Correo electrónico',
           icon: Icons.mail_outline_rounded,
-          keyboardType: TextInputType.emailAddress,
+          keyboardType:
+              TextInputType.emailAddress,
         ),
+
         const SizedBox(height: 12),
 
         _buildField(
@@ -383,6 +624,7 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
           icon: Icons.phone_outlined,
           keyboardType: TextInputType.phone,
         ),
+
         const SizedBox(height: 12),
 
         _buildField(
@@ -393,7 +635,8 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
           suffixIcon: IconButton(
             onPressed: () {
               setState(() {
-                _obscurePassword = !_obscurePassword;
+                _obscurePassword =
+                    !_obscurePassword;
               });
             },
             icon: Icon(
@@ -404,17 +647,21 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
             ),
           ),
         ),
+
         const SizedBox(height: 12),
 
         _buildField(
-          controller: _confirmPasswordController,
+          controller:
+              _confirmPasswordController,
           hint: 'Confirmar contraseña',
           icon: Icons.lock_outline_rounded,
-          obscureText: _obscureConfirmPassword,
+          obscureText:
+              _obscureConfirmPassword,
           suffixIcon: IconButton(
             onPressed: () {
               setState(() {
-                _obscureConfirmPassword = !_obscureConfirmPassword;
+                _obscureConfirmPassword =
+                    !_obscureConfirmPassword;
               });
             },
             icon: Icon(
@@ -427,6 +674,7 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
         ),
 
         const SizedBox(height: 22),
+
         _buildPrimaryButton(
           text: 'Continuar',
           onTap: _nextStep,
@@ -435,9 +683,14 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
     );
   }
 
+  // ============================================================
+  // PASO 2
+  // ============================================================
+
   Widget _buildOwnerInfoStep() {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment:
+          CrossAxisAlignment.start,
       children: [
         const Center(
           child: Text(
@@ -449,12 +702,15 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
             ),
           ),
         ),
+
         const SizedBox(height: 6),
+
         const Center(
           child: Text(
             'Háblanos un poco más sobre ti.',
             style: TextStyle(
-              color: CohabiColors.textSecondary,
+              color:
+                  CohabiColors.textSecondary,
               fontSize: 14,
             ),
           ),
@@ -475,9 +731,11 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
 
         _buildOwnerTypeOption(
           value: 'Particular',
-          icon: Icons.person_outline_rounded,
+          icon:
+              Icons.person_outline_rounded,
           color: CohabiColors.turquoise,
         ),
+
         const SizedBox(height: 10),
 
         _buildOwnerTypeOption(
@@ -485,6 +743,7 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
           icon: Icons.apartment_rounded,
           color: CohabiColors.purple,
         ),
+
         const SizedBox(height: 10),
 
         _buildOwnerTypeOption(
@@ -503,6 +762,7 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
             fontWeight: FontWeight.w700,
           ),
         ),
+
         const SizedBox(height: 8),
 
         _buildField(
@@ -520,6 +780,7 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
             fontWeight: FontWeight.w700,
           ),
         ),
+
         const SizedBox(height: 8),
 
         _buildField(
@@ -533,45 +794,53 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
           children: [
             Expanded(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
                 children: [
                   const Text(
                     'Ciudad',
                     style: TextStyle(
                       color: CohabiColors.navy,
                       fontSize: 13,
-                      fontWeight: FontWeight.w700,
+                      fontWeight:
+                          FontWeight.w700,
                     ),
                   ),
+
                   const SizedBox(height: 8),
+
                   _buildField(
-                    controller: _cityController,
+                    controller:
+                        _cityController,
                     hint: 'Ej. Madrid',
                   ),
                 ],
               ),
             ),
+
             const SizedBox(width: 12),
+
             Expanded(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
                 children: [
                   const Text(
                     'Provincia',
                     style: TextStyle(
                       color: CohabiColors.navy,
                       fontSize: 13,
-                      fontWeight: FontWeight.w700,
+                      fontWeight:
+                          FontWeight.w700,
                     ),
                   ),
+
                   const SizedBox(height: 8),
+
                   _buildField(
-                    controller: _provinceController,
+                    controller:
+                        _provinceController,
                     hint: 'Ej. Madrid',
-                    suffixIcon: const Icon(
-                      Icons.keyboard_arrow_down_rounded,
-                      color: CohabiColors.textMuted,
-                    ),
                   ),
                 ],
               ),
@@ -589,17 +858,20 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
             fontWeight: FontWeight.w700,
           ),
         ),
+
         const SizedBox(height: 8),
 
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(
+          padding:
+              const EdgeInsets.symmetric(
             horizontal: 14,
             vertical: 2,
           ),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius:
+                BorderRadius.circular(14),
             border: Border.all(
               color: CohabiColors.border,
             ),
@@ -639,6 +911,10 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
     );
   }
 
+  // ============================================================
+  // PASO 3
+  // ============================================================
+
   Widget _buildVerificationStep() {
     return Column(
       children: [
@@ -650,7 +926,9 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
             fontWeight: FontWeight.w800,
           ),
         ),
+
         const SizedBox(height: 6),
+
         const Text(
           'Opcional, pero recomendado para generar\nmás confianza.',
           textAlign: TextAlign.center,
@@ -667,19 +945,23 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: CohabiColors.turquoiseSoft,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius:
+                BorderRadius.circular(16),
           ),
           child: const Row(
             children: [
               Icon(
                 Icons.shield_outlined,
-                color: CohabiColors.turquoise,
+                color:
+                    CohabiColors.turquoise,
                 size: 28,
               ),
               SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Verifica tu identidad para aumentar la seguridad y confianza de tu perfil. Puedes hacerlo ahora o más tarde.',
+                  'Verifica tu identidad para aumentar la seguridad '
+                  'y confianza de tu perfil. Puedes hacerlo ahora '
+                  'o más tarde.',
                   style: TextStyle(
                     color: CohabiColors.navy,
                     fontSize: 13,
@@ -694,20 +976,28 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
         const SizedBox(height: 16),
 
         _buildUploadCard(
-          title: 'Subir documento de identidad',
-          subtitle: 'DNI, NIE o Pasaporte',
+          title:
+              'Subir documento de identidad',
+          subtitle:
+              'DNI, NIE o Pasaporte',
           onTap: () {
-            debugPrint('Subir documento');
+            debugPrint(
+              'Subir documento',
+            );
           },
         ),
 
         const SizedBox(height: 12),
 
         _buildUploadCard(
-          title: 'Selfie para verificar identidad',
-          subtitle: 'Tómate una foto para comprobar que eres tú.',
+          title:
+              'Selfie para verificar identidad',
+          subtitle:
+              'Tómate una foto para comprobar que eres tú.',
           onTap: () {
-            debugPrint('Subir selfie');
+            debugPrint(
+              'Subir selfie',
+            );
           },
         ),
 
@@ -717,18 +1007,21 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: CohabiColors.purpleSoft,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius:
+                BorderRadius.circular(14),
           ),
           child: const Row(
             children: [
               Icon(
                 Icons.info_outline_rounded,
-                color: CohabiColors.purple,
+                color:
+                    CohabiColors.purple,
               ),
               SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'Este paso es opcional. Podrás completarlo más adelante desde tu perfil.',
+                  'Este paso es opcional. Podrás completarlo '
+                  'más adelante desde tu perfil.',
                   style: TextStyle(
                     color: CohabiColors.navy,
                     fontSize: 12,
@@ -763,6 +1056,10 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
     );
   }
 
+  // ============================================================
+  // PASO 4
+  // ============================================================
+
   Widget _buildTermsStep() {
     return Column(
       children: [
@@ -774,7 +1071,9 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
             fontWeight: FontWeight.w800,
           ),
         ),
+
         const SizedBox(height: 6),
+
         const Text(
           'Últimos pasos para crear tu cuenta.',
           style: TextStyle(
@@ -787,10 +1086,12 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
 
         _buildCheckboxCard(
           value: _privacyAccepted,
-          text: 'He leído y acepto la Política de Privacidad.',
+          text:
+              'He leído y acepto la Política de Privacidad.',
           onChanged: (value) {
             setState(() {
-              _privacyAccepted = value ?? false;
+              _privacyAccepted =
+                  value ?? false;
             });
           },
         ),
@@ -799,10 +1100,12 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
 
         _buildCheckboxCard(
           value: _termsAccepted,
-          text: 'Acepto los Términos y Condiciones de uso.',
+          text:
+              'Acepto los Términos y Condiciones de uso.',
           onChanged: (value) {
             setState(() {
-              _termsAccepted = value ?? false;
+              _termsAccepted =
+                  value ?? false;
             });
           },
         ),
@@ -810,12 +1113,15 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
         const SizedBox(height: 10),
 
         _buildCheckboxCard(
-          value: _serviceCommunicationAccepted,
+          value:
+              _serviceCommunicationAccepted,
           text:
-          'Acepto recibir comunicaciones relacionadas con mi cuenta, avisos importantes y notificaciones del servicio.',
+              'Acepto recibir comunicaciones relacionadas con mi '
+              'cuenta, avisos importantes y notificaciones del servicio.',
           onChanged: (value) {
             setState(() {
-              _serviceCommunicationAccepted = value ?? false;
+              _serviceCommunicationAccepted =
+                  value ?? false;
             });
           },
         ),
@@ -825,10 +1131,14 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
         _buildCheckboxCard(
           value: _dataSharingAccepted,
           text:
-          'Acepto que Cohabi pueda compartir determinados datos de mi perfil con empresas colaboradoras cuando sea necesario para prestarme servicios relacionados con el alquiler. (Opcional)',
+              'Acepto que Cohabi pueda compartir determinados datos '
+              'de mi perfil con empresas colaboradoras cuando sea '
+              'necesario para prestarme servicios relacionados con '
+              'el alquiler. (Opcional)',
           onChanged: (value) {
             setState(() {
-              _dataSharingAccepted = value ?? false;
+              _dataSharingAccepted =
+                  value ?? false;
             });
           },
         ),
@@ -838,10 +1148,13 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
         _buildCheckboxCard(
           value: _marketingAccepted,
           text:
-          'Deseo recibir ofertas, promociones y recomendaciones personalizadas de Cohabi y de sus empresas colaboradoras. (Opcional)',
+              'Deseo recibir ofertas, promociones y recomendaciones '
+              'personalizadas de Cohabi y de sus empresas colaboradoras. '
+              '(Opcional)',
           onChanged: (value) {
             setState(() {
-              _marketingAccepted = value ?? false;
+              _marketingAccepted =
+                  value ?? false;
             });
           },
         ),
@@ -851,10 +1164,15 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
         _buildPrimaryButton(
           text: 'Crear cuenta',
           onTap: _createAccount,
+          isLoading: _isCreatingAccount,
         ),
       ],
     );
   }
+
+  // ============================================================
+  // CAMPO
+  // ============================================================
 
   Widget _buildField({
     required TextEditingController controller,
@@ -877,27 +1195,36 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
         prefixIcon: icon == null
             ? null
             : Icon(
-          icon,
-          color: CohabiColors.textMuted,
-          size: 21,
-        ),
+                icon,
+                color:
+                    CohabiColors.textMuted,
+                size: 21,
+              ),
         suffixIcon: suffixIcon,
         filled: true,
         fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(
+        contentPadding:
+            const EdgeInsets.symmetric(
           horizontal: 14,
           vertical: 16,
         ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(
+        enabledBorder:
+            OutlineInputBorder(
+          borderRadius:
+              BorderRadius.circular(14),
+          borderSide:
+              const BorderSide(
             color: CohabiColors.border,
           ),
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(
-            color: CohabiColors.turquoise,
+        focusedBorder:
+            OutlineInputBorder(
+          borderRadius:
+              BorderRadius.circular(14),
+          borderSide:
+              const BorderSide(
+            color:
+                CohabiColors.turquoise,
             width: 1.4,
           ),
         ),
@@ -905,12 +1232,17 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
     );
   }
 
+  // ============================================================
+  // TIPO PROPIETARIO
+  // ============================================================
+
   Widget _buildOwnerTypeOption({
     required String value,
     required IconData icon,
     required Color color,
   }) {
-    final selected = _ownerType == value;
+    final selected =
+        _ownerType == value;
 
     return InkWell(
       onTap: () {
@@ -918,17 +1250,22 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
           _ownerType = value;
         });
       },
-      borderRadius: BorderRadius.circular(14),
+      borderRadius:
+          BorderRadius.circular(14),
       child: Container(
-        padding: const EdgeInsets.symmetric(
+        padding:
+            const EdgeInsets.symmetric(
           horizontal: 14,
           vertical: 14,
         ),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius:
+              BorderRadius.circular(14),
           border: Border.all(
-            color: selected ? CohabiColors.turquoise : CohabiColors.border,
+            color: selected
+                ? CohabiColors.turquoise
+                : CohabiColors.border,
             width: selected ? 1.5 : 1,
           ),
         ),
@@ -938,21 +1275,26 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
               icon,
               color: color,
             ),
+
             const SizedBox(width: 14),
+
             Expanded(
               child: Text(
                 value,
                 style: const TextStyle(
                   color: CohabiColors.navy,
                   fontSize: 14,
-                  fontWeight: FontWeight.w600,
+                  fontWeight:
+                      FontWeight.w600,
                 ),
               ),
             ),
+
             if (selected)
               const CircleAvatar(
                 radius: 10,
-                backgroundColor: CohabiColors.turquoise,
+                backgroundColor:
+                    CohabiColors.turquoise,
                 child: Icon(
                   Icons.check,
                   color: Colors.white,
@@ -965,6 +1307,10 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
     );
   }
 
+  // ============================================================
+  // TARJETA SUBIDA
+  // ============================================================
+
   Widget _buildUploadCard({
     required String title,
     required String subtitle,
@@ -972,12 +1318,15 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius:
+          BorderRadius.circular(16),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding:
+            const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius:
+              BorderRadius.circular(16),
           border: Border.all(
             color: CohabiColors.border,
           ),
@@ -986,37 +1335,47 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
           children: [
             Expanded(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
                 children: [
                   Text(
                     title,
                     style: const TextStyle(
-                      color: CohabiColors.navy,
+                      color:
+                          CohabiColors.navy,
                       fontSize: 14,
-                      fontWeight: FontWeight.w700,
+                      fontWeight:
+                          FontWeight.w700,
                     ),
                   ),
+
                   const SizedBox(height: 5),
+
                   Text(
                     subtitle,
                     style: const TextStyle(
-                      color: CohabiColors.textSecondary,
+                      color: CohabiColors
+                          .textSecondary,
                       fontSize: 12,
                     ),
                   ),
                 ],
               ),
             ),
+
             Container(
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: CohabiColors.purpleSoft,
-                borderRadius: BorderRadius.circular(12),
+                color:
+                    CohabiColors.purpleSoft,
+                borderRadius:
+                    BorderRadius.circular(12),
               ),
               child: const Icon(
                 Icons.cloud_upload_outlined,
-                color: CohabiColors.purple,
+                color:
+                    CohabiColors.purple,
               ),
             ),
           ],
@@ -1025,29 +1384,42 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
     );
   }
 
+  // ============================================================
+  // CHECKBOX
+  // ============================================================
+
   Widget _buildCheckboxCard({
     required bool value,
     required String text,
-    required ValueChanged<bool?> onChanged,
+    required ValueChanged<bool?>
+        onChanged,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(
+      padding:
+          const EdgeInsets.symmetric(
         horizontal: 8,
         vertical: 4,
       ),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius:
+            BorderRadius.circular(14),
         border: Border.all(
           color: CohabiColors.border,
         ),
       ),
       child: CheckboxListTile(
         value: value,
-        onChanged: onChanged,
-        activeColor: CohabiColors.turquoise,
+        onChanged:
+            _isCreatingAccount
+                ? null
+                : onChanged,
+        activeColor:
+            CohabiColors.turquoise,
         contentPadding: EdgeInsets.zero,
-        controlAffinity: ListTileControlAffinity.leading,
+        controlAffinity:
+            ListTileControlAffinity
+                .leading,
         title: Text(
           text,
           style: const TextStyle(
@@ -1060,40 +1432,74 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
     );
   }
 
+  // ============================================================
+  // BOTÓN PRINCIPAL
+  // ============================================================
+
   Widget _buildPrimaryButton({
     required String text,
     required VoidCallback onTap,
+    bool isLoading = false,
   }) {
     return Container(
       width: double.infinity,
       height: 56,
       decoration: BoxDecoration(
-        gradient: CohabiColors.primaryGradient,
-        borderRadius: BorderRadius.circular(16),
+        gradient:
+            CohabiColors.primaryGradient,
+        borderRadius:
+            BorderRadius.circular(16),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
+          onTap:
+              isLoading ? null : onTap,
+          borderRadius:
+              BorderRadius.circular(16),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18),
+            padding:
+                const EdgeInsets.symmetric(
+              horizontal: 18,
+            ),
             child: Row(
               children: [
                 const Spacer(),
-                Text(
-                  text,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
+
+                if (isLoading)
+                  const SizedBox(
+                    width: 23,
+                    height: 23,
+                    child:
+                        CircularProgressIndicator(
+                      strokeWidth: 2.4,
+                      valueColor:
+                          AlwaysStoppedAnimation<
+                              Color>(
+                        Colors.white,
+                      ),
+                    ),
+                  )
+                else
+                  Text(
+                    text,
+                    style:
+                        const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight:
+                          FontWeight.w700,
+                    ),
                   ),
-                ),
+
                 const Spacer(),
-                const Icon(
-                  Icons.arrow_forward_rounded,
-                  color: Colors.white,
-                ),
+
+                if (!isLoading)
+                  const Icon(
+                    Icons
+                        .arrow_forward_rounded,
+                    color: Colors.white,
+                  ),
               ],
             ),
           ),
@@ -1102,20 +1508,30 @@ class _OwnerRegisterScreenState extends State<OwnerRegisterScreen> {
     );
   }
 
+  // ============================================================
+  // DOTS
+  // ============================================================
+
   Widget _buildDots() {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisAlignment:
+          MainAxisAlignment.center,
       children: List.generate(
         4,
-            (index) => Container(
+        (index) => Container(
           width: 8,
           height: 8,
-          margin: const EdgeInsets.symmetric(horizontal: 5),
+          margin:
+              const EdgeInsets.symmetric(
+            horizontal: 5,
+          ),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: index <= _currentStep
-                ? CohabiColors.turquoise
-                : CohabiColors.border,
+            color:
+                index <= _currentStep
+                    ? CohabiColors
+                        .turquoise
+                    : CohabiColors.border,
           ),
         ),
       ),
