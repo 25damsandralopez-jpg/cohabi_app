@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:country_picker/country_picker.dart';
+import 'tenant_account_created_screen.dart';
 
 import '../core/theme/app_colors.dart';
 
@@ -177,7 +178,14 @@ class _TenantRegisterScreenState
         _currentStep--;
       });
     } else {
-      Navigator.pop(context);
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (context) =>
+          const TenantAccountCreatedScreen(),
+        ),
+            (route) => false,
+      );
     }
   }
 
