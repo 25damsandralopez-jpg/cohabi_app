@@ -5,6 +5,8 @@ import '../core/theme/app_colors.dart';
 import '../core/navigation/owner_navigation.dart';
 import '../core/widgets/owner_bottom_navigation.dart';
 import 'property_register_screen.dart';
+import '../features/owner_properties/screens/owner_property_detail_screen.dart';
+import '../features/owner_applications/screens/owner_applications_screen.dart';
 
 class PropertiesDashboardScreen extends StatefulWidget {
   const PropertiesDashboardScreen({
@@ -44,7 +46,7 @@ class _PropertiesDashboardScreenState
 
       final propertiesResponse = await supabase
           .from('properties')
-          .select('id, name, city, rooms')
+          .select('id, name, address, city, rooms')
           .eq('owner_id', user.id);
 
       final List<dynamic> propertiesData = propertiesResponse;
@@ -67,6 +69,59 @@ class _PropertiesDashboardScreenState
             .eq('property_id', propertyId);
 
         final List<dynamic> roomsData = roomsResponse;
+
+        int tenantCount = 0;
+        double monthlyIncome = 0;
+        int openIncidents = 0;
+        String? nextEntry;
+        String? nextExit;
+
+        try {
+          final tenanciesResponse = await supabase
+              .from('tenancies')
+              .select('status, start_date, end_date, monthly_rent')
+              .eq('property_id', propertyId)
+              .inFilter('status', ['reserved', 'active', 'ending']);
+          final tenancies = List<Map<String, dynamic>>.from(
+            (tenanciesResponse as List).map((e) => Map<String, dynamic>.from(e as Map)),
+          );
+          tenantCount = tenancies.where((t) => t['status'] == 'active').length;
+          monthlyIncome = tenancies
+              .where((t) => ['reserved', 'active', 'ending'].contains(t['status']))
+              .fold<double>(0, (sum, t) {
+            final value = t['monthly_rent'];
+            return sum + (value is num ? value.toDouble() : double.tryParse('$value') ?? 0);
+          });
+
+          final today = DateTime.now();
+          final entries = tenancies
+              .where((t) => t['status'] == 'reserved' && t['start_date'] != null)
+              .map((t) => DateTime.tryParse(t['start_date'].toString()))
+              .whereType<DateTime>()
+              .where((d) => !d.isBefore(DateTime(today.year, today.month, today.day)))
+              .toList()
+            ..sort();
+          if (entries.isNotEmpty) nextEntry = _formatDate(entries.first);
+
+          final exits = tenancies
+              .where((t) => ['active', 'ending'].contains(t['status']) && t['end_date'] != null)
+              .map((t) => DateTime.tryParse(t['end_date'].toString()))
+              .whereType<DateTime>()
+              .where((d) => !d.isBefore(DateTime(today.year, today.month, today.day)))
+              .toList()
+            ..sort();
+          if (exits.isNotEmpty) nextExit = _formatDate(exits.first);
+        } catch (_) {}
+
+        try {
+          final incidentsResponse = await supabase
+              .from('incidents')
+              .select('status')
+              .eq('property_id', propertyId);
+          openIncidents = (incidentsResponse as List)
+              .where((i) => !['resolved', 'closed'].contains((i as Map)['status']))
+              .length;
+        } catch (_) {}
 
         // Número TOTAL de habitaciones declarado al crear el piso.
         final totalRooms = property['rooms'] as int? ?? 0;
@@ -112,6 +167,11 @@ class _PropertiesDashboardScreenState
             city: property['city']?.toString() ?? '',
             totalRooms: totalRooms,
             availableRooms: availableRooms,
+            tenantCount: tenantCount,
+            monthlyIncome: monthlyIncome,
+            openIncidents: openIncidents,
+            nextEntry: nextEntry,
+            nextExit: nextExit,
             imageUrl: imageUrl,
           ),
         );
@@ -135,6 +195,10 @@ class _PropertiesDashboardScreenState
         _errorMessage = error.toString();
       });
     }
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
 
   Future<void> _refresh() async {
@@ -298,14 +362,12 @@ class _PropertiesDashboardScreenState
   Widget _buildPropertyCard(_PropertySummary property) {
     return InkWell(
       onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Después conectaremos la gestión de ${property.name}.',
-            ),
-            behavior: SnackBarBehavior.floating,
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => OwnerPropertyDetailScreen(propertyId: property.id),
           ),
-        );
+        ).then((_) => _refresh());
       },
       borderRadius: BorderRadius.circular(22),
       child: Container(
@@ -421,7 +483,7 @@ class _PropertiesDashboardScreenState
                   child: _buildStatistic(
                     icon: Icons.person_outline_rounded,
                     title: 'Inquilinos',
-                    value: '0',
+                    value: '${property.tenantCount}',
                     accent: CohabiColors.purple,
                   ),
                 ),
@@ -432,7 +494,7 @@ class _PropertiesDashboardScreenState
                   child: _buildStatistic(
                     icon: Icons.euro_rounded,
                     title: 'Generando\ningresos',
-                    value: '0 €/mes',
+                    value: '${property.monthlyIncome.toStringAsFixed(0)} €/mes',
                     accent: const Color(0xFFFF951F),
                   ),
                 ),
@@ -443,7 +505,7 @@ class _PropertiesDashboardScreenState
                   child: _buildStatistic(
                     icon: Icons.warning_amber_rounded,
                     title: 'Incidencias',
-                    value: '0',
+                    value: '${property.openIncidents}',
                     accent: const Color(0xFFFF6674),
                   ),
                 ),
@@ -463,26 +525,30 @@ class _PropertiesDashboardScreenState
             // ENTRADAS / SALIDAS
             // ====================================================
 
-            const Row(
+            Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
                   child: _EmptyEvent(
                     icon: Icons.calendar_today_outlined,
                     title: 'Próximas entradas',
-                    text: 'No hay entradas programadas',
+                    text: property.nextEntry == null
+                        ? 'No hay entradas programadas'
+                        : property.nextEntry!,
                     accent: CohabiColors.turquoise,
                   ),
                 ),
 
-                SizedBox(width: 18),
+                const SizedBox(width: 18),
 
                 Expanded(
                   child: _EmptyEvent(
                     icon: Icons.event_busy_outlined,
                     title: 'Próximas salidas',
-                    text: 'No hay salidas programadas',
-                    accent: Color(0xFFFF6674),
+                    text: property.nextExit == null
+                        ? 'No hay salidas programadas'
+                        : property.nextExit!,
+                    accent: const Color(0xFFFF6674),
                   ),
                 ),
               ],
@@ -674,13 +740,9 @@ class _PropertiesDashboardScreenState
   Widget _buildCohabiSelectionButton() {
     return InkWell(
       onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Cohabi Selección la conectaremos más adelante.',
-            ),
-            behavior: SnackBarBehavior.floating,
-          ),
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const OwnerApplicationsScreen()),
         );
       },
       borderRadius: BorderRadius.circular(18),
@@ -858,6 +920,11 @@ class _PropertySummary {
   final String city;
   final int totalRooms;
   final int availableRooms;
+  final int tenantCount;
+  final double monthlyIncome;
+  final int openIncidents;
+  final String? nextEntry;
+  final String? nextExit;
   final String? imageUrl;
 
   const _PropertySummary({
@@ -866,6 +933,11 @@ class _PropertySummary {
     required this.city,
     required this.totalRooms,
     required this.availableRooms,
+    required this.tenantCount,
+    required this.monthlyIncome,
+    required this.openIncidents,
+    required this.nextEntry,
+    required this.nextExit,
     required this.imageUrl,
   });
 }

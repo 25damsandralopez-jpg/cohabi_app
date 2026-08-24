@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../core/theme/app_colors.dart';
 import '../core/navigation/tenant_navigation.dart';
 import '../core/widgets/tenant_bottom_navigation.dart';
+import '../features/notifications/screens/notifications_screen.dart';
 
 class TenantHomeScreen extends StatelessWidget {
   const TenantHomeScreen({super.key});
@@ -73,9 +74,15 @@ class TenantHomeScreen extends StatelessWidget {
                               color: CohabiColors.border,
                             ),
                           ),
-                          child: const Icon(
-                            Icons.notifications_none_rounded,
-                            color: CohabiColors.navy,
+                          child: IconButton(
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+                            ),
+                            icon: const Icon(
+                              Icons.notifications_none_rounded,
+                              color: CohabiColors.navy,
+                            ),
                           ),
                         ),
                       ],

@@ -1,18 +1,13 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/owner_application.dart';
+import '../models/owner_candidate_profile.dart';
 
 class OwnerApplicationsService {
   final SupabaseClient _supabase;
 
   OwnerApplicationsService([SupabaseClient? client])
       : _supabase = client ?? Supabase.instance.client;
-
-  String get _userId {
-    final value = _supabase.auth.currentUser?.id;
-    if (value == null) throw StateError('No hay una sesión iniciada.');
-    return value;
-  }
 
   Future<List<OwnerApplication>> loadApplications() async {
     final response = await _supabase.rpc('owner_application_feed');
@@ -39,15 +34,13 @@ class OwnerApplicationsService {
         slots = List<Map<String, dynamic>>.from(
           (slotResponse as List)
               .map((e) => Map<String, dynamic>.from(e as Map)),
-        )
-            .map(
-              (slot) => OwnerVisitSlot(
-                id: slot['id'].toString(),
-                scheduledAt: DateTime.parse(slot['scheduled_at'].toString()),
-                status: slot['status']?.toString() ?? 'available',
-              ),
-            )
-            .toList();
+        ).map(
+          (slot) => OwnerVisitSlot(
+            id: slot['id'].toString(),
+            scheduledAt: DateTime.parse(slot['scheduled_at'].toString()),
+            status: slot['status']?.toString() ?? 'available',
+          ),
+        ).toList();
       } catch (_) {
         slots = const [];
       }
@@ -76,6 +69,23 @@ class OwnerApplicationsService {
     return result;
   }
 
+  Future<OwnerCandidateProfile> loadCandidateProfile(
+    String applicationId,
+  ) async {
+    final response = await _supabase.rpc(
+      'owner_candidate_profile',
+      params: {'target_application_id': applicationId},
+    );
+
+    if (response == null) {
+      throw StateError('No se encontró el perfil del candidato.');
+    }
+
+    return OwnerCandidateProfile.fromMap(
+      Map<String, dynamic>.from(response as Map),
+    );
+  }
+
   Future<void> markUnderReview(String applicationId) async {
     await _supabase.rpc(
       'owner_mark_application_under_review',
@@ -83,19 +93,20 @@ class OwnerApplicationsService {
     );
   }
 
-  Future<void> proposeVisit(String applicationId) async {
-    final now = DateTime.now();
-    final slots = <DateTime>[
-      DateTime(now.year, now.month, now.day + 1, 18, 0),
-      DateTime(now.year, now.month, now.day + 2, 12, 0),
-      DateTime(now.year, now.month, now.day + 3, 18, 30),
-    ];
+  Future<void> proposeVisit(
+    String applicationId,
+    List<DateTime> slots,
+  ) async {
+    if (slots.isEmpty) {
+      throw ArgumentError('Selecciona al menos una fecha y hora.');
+    }
 
     await _supabase.rpc(
       'owner_propose_visit',
       params: {
         'target_application_id': applicationId,
-        'proposed_slots': slots.map((e) => e.toUtc().toIso8601String()).toList(),
+        'proposed_slots':
+            slots.map((e) => e.toUtc().toIso8601String()).toList(),
       },
     );
   }
@@ -109,7 +120,7 @@ class OwnerApplicationsService {
 
   Future<void> acceptApplication(String applicationId) async {
     await _supabase.rpc(
-      'owner_accept_application',
+      'owner_accept_application_v12',
       params: {'target_application_id': applicationId},
     );
   }

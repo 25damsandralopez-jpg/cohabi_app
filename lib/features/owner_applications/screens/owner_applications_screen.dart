@@ -4,6 +4,7 @@ import '../../../core/navigation/owner_navigation.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/owner_bottom_navigation.dart';
 import '../models/owner_application.dart';
+import 'owner_candidate_profile_screen.dart';
 import '../services/owner_applications_service.dart';
 
 class OwnerApplicationsScreen extends StatefulWidget {
@@ -77,6 +78,22 @@ class _OwnerApplicationsScreenState extends State<OwnerApplicationsScreen> {
           behavior: SnackBarBehavior.floating,
         ),
       );
+    }
+  }
+
+
+  Future<void> _openCandidate(OwnerApplication app) async {
+    final changed = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => OwnerCandidateProfileScreen(
+          applicationId: app.id,
+        ),
+      ),
+    );
+
+    if (changed == true && mounted) {
+      await _load();
     }
   }
 
@@ -222,33 +239,7 @@ class _OwnerApplicationsScreenState extends State<OwnerApplicationsScreen> {
                 _info(Icons.event_available_outlined, _dateTime(app.visitScheduledAt!)),
             ],
           ),
-          if (app.status == 'pending') ...[
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => _run(
-                      () => _service.rejectApplication(app.id),
-                      'Solicitud descartada.',
-                    ),
-                    child: const Text('Descartar'),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: () => _run(
-                      () => _service.markUnderReview(app.id),
-                      'Solicitud marcada en revisión.',
-                    ),
-                    child: const Text('Revisar'),
-                  ),
-                ),
-              ],
-            ),
-          ],
-          if (app.status == 'under_review') ...[
+          if (app.status == 'pending' || app.status == 'under_review') ...[
             const SizedBox(height: 16),
             Row(
               children: [
@@ -264,12 +255,13 @@ class _OwnerApplicationsScreenState extends State<OwnerApplicationsScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: FilledButton.icon(
-                    onPressed: () => _run(
-                      () => _service.proposeVisit(app.id),
-                      'Visita propuesta al inquilino.',
+                    onPressed: () => _openCandidate(app),
+                    icon: const Icon(Icons.person_search_rounded),
+                    label: Text(
+                      app.status == 'pending'
+                          ? 'Revisar perfil'
+                          : 'Ver perfil',
                     ),
-                    icon: const Icon(Icons.calendar_month_outlined),
-                    label: const Text('Proponer visita'),
                   ),
                 ),
               ],
@@ -280,6 +272,12 @@ class _OwnerApplicationsScreenState extends State<OwnerApplicationsScreen> {
             const Text(
               'Esperando a que el inquilino elija uno de los horarios propuestos.',
               style: TextStyle(color: CohabiColors.textSecondary),
+            ),
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: () => _openCandidate(app),
+              icon: const Icon(Icons.person_outline_rounded),
+              label: const Text('Ver perfil / editar visita'),
             ),
           ],
           if (app.status == 'visit_confirmed') ...[
