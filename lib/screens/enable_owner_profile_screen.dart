@@ -5,6 +5,7 @@ import '../core/theme/app_colors.dart';
 import '../core/widgets/widgets.dart';
 import '../features/account/services/account_service.dart';
 import 'properties_dashboard_screen.dart';
+import '../features/owner_home/screens/owner_home_screen.dart';
 
 class EnableOwnerProfileScreen extends StatefulWidget {
   const EnableOwnerProfileScreen({super.key});
@@ -64,7 +65,7 @@ class _EnableOwnerProfileScreenState extends State<EnableOwnerProfileScreen> {
       if (!mounted) return;
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (_) => const PropertiesDashboardScreen()),
+        MaterialPageRoute(builder: (_) => const OwnerHomeScreen()),
         (_) => false,
       );
     } on PostgrestException catch (error) {

@@ -9,102 +9,123 @@ class OwnerApplicationsService {
       : _supabase = client ?? Supabase.instance.client;
 
   String get _userId {
-    final id = _supabase.auth.currentUser?.id;
-    if (id == null) throw StateError('No hay una sesión iniciada.');
-    return id;
+    final value = _supabase.auth.currentUser?.id;
+    if (value == null) throw StateError('No hay una sesión iniciada.');
+    return value;
   }
 
   Future<List<OwnerApplication>> loadApplications() async {
-    final ownedProperties = await _supabase
-        .from('properties')
-        .select('id, name')
-        .eq('owner_id', _userId);
+    final response = await _supabase.rpc('owner_application_feed');
 
-    final propertyRows = List<Map<String, dynamic>>.from(
-      (ownedProperties as List).map((e) => Map<String, dynamic>.from(e as Map)),
+    final rows = List<Map<String, dynamic>>.from(
+      (response as List).map((e) => Map<String, dynamic>.from(e as Map)),
     );
-    if (propertyRows.isEmpty) return [];
-
-    final propertyMap = <String, String>{
-      for (final p in propertyRows) p['id'].toString(): p['name']?.toString() ?? 'Piso Cohabi',
-    };
-
-    final apps = await _supabase
-        .from('applications')
-        .select('id, tenant_id, property_id, room_id, status, created_at, visit_scheduled_at')
-        .inFilter('property_id', propertyMap.keys.toList())
-        .order('created_at', ascending: false);
 
     final result = <OwnerApplication>[];
-    for (final raw in apps as List<dynamic>) {
-      final row = Map<String, dynamic>.from(raw as Map);
-      final tenantId = row['tenant_id'].toString();
-      final roomId = row['room_id'].toString();
-      String tenantName = 'Inquilino Cohabi';
-      int roomNumber = 1;
+
+    for (final row in rows) {
+      final applicationId = row['application_id']?.toString() ?? '';
+      if (applicationId.isEmpty) continue;
+
+      List<OwnerVisitSlot> slots = const [];
 
       try {
-        final profile = await _supabase
-            .from('profiles')
-            .select('first_name, last_name')
-            .eq('id', tenantId)
-            .single();
-        final first = profile['first_name']?.toString() ?? '';
-        final last = profile['last_name']?.toString() ?? '';
-        final full = '$first $last'.trim();
-        if (full.isNotEmpty) tenantName = full;
-      } catch (_) {}
+        final slotResponse = await _supabase
+            .from('application_visit_slots')
+            .select('id, scheduled_at, status')
+            .eq('application_id', applicationId)
+            .order('scheduled_at', ascending: true);
 
-      try {
-        final room = await _supabase
-            .from('rooms')
-            .select('room_number')
-            .eq('id', roomId)
-            .single();
-        final value = room['room_number'];
-        roomNumber = value is num ? value.toInt() : int.tryParse('$value') ?? 1;
-      } catch (_) {}
+        slots = List<Map<String, dynamic>>.from(
+          (slotResponse as List)
+              .map((e) => Map<String, dynamic>.from(e as Map)),
+        )
+            .map(
+              (slot) => OwnerVisitSlot(
+                id: slot['id'].toString(),
+                scheduledAt: DateTime.parse(slot['scheduled_at'].toString()),
+                status: slot['status']?.toString() ?? 'available',
+              ),
+            )
+            .toList();
+      } catch (_) {
+        slots = const [];
+      }
 
-      result.add(OwnerApplication(
-        id: row['id'].toString(),
-        tenantId: tenantId,
-        propertyId: row['property_id'].toString(),
-        roomId: roomId,
-        status: row['status']?.toString() ?? 'pending',
-        createdAt: DateTime.tryParse(row['created_at']?.toString() ?? '') ?? DateTime.now(),
-        visitScheduledAt: DateTime.tryParse(row['visit_scheduled_at']?.toString() ?? ''),
-        tenantName: tenantName,
-        propertyName: propertyMap[row['property_id'].toString()] ?? 'Piso Cohabi',
-        roomNumber: roomNumber,
-      ));
+      result.add(
+        OwnerApplication(
+          id: applicationId,
+          tenantId: row['tenant_id']?.toString() ?? '',
+          tenantName: row['tenant_name']?.toString().trim().isNotEmpty == true
+              ? row['tenant_name'].toString()
+              : 'Inquilino Cohabi',
+          propertyId: row['property_id']?.toString() ?? '',
+          propertyName: row['property_name']?.toString() ?? 'Piso Cohabi',
+          city: row['city']?.toString() ?? '',
+          roomId: row['room_id']?.toString() ?? '',
+          roomNumber: _int(row['room_number'], 1),
+          monthlyPrice: _double(row['monthly_price']),
+          status: row['status']?.toString() ?? 'pending',
+          createdAt: _date(row['created_at']) ?? DateTime.now(),
+          visitScheduledAt: _date(row['visit_scheduled_at']),
+          visitSlots: slots,
+        ),
+      );
     }
+
     return result;
   }
 
   Future<void> markUnderReview(String applicationId) async {
-    await _supabase.rpc('owner_mark_application_review', params: {
-      'target_application_id': applicationId,
-    });
+    await _supabase.rpc(
+      'owner_mark_application_under_review',
+      params: {'target_application_id': applicationId},
+    );
   }
 
-  Future<void> proposeVisit(String applicationId, List<DateTime> slots) async {
-    await _supabase.rpc('owner_propose_visit', params: {
-      'target_application_id': applicationId,
-      'proposed_slots': slots.map((e) => e.toUtc().toIso8601String()).toList(),
-    });
+  Future<void> proposeVisit(String applicationId) async {
+    final now = DateTime.now();
+    final slots = <DateTime>[
+      DateTime(now.year, now.month, now.day + 1, 18, 0),
+      DateTime(now.year, now.month, now.day + 2, 12, 0),
+      DateTime(now.year, now.month, now.day + 3, 18, 30),
+    ];
+
+    await _supabase.rpc(
+      'owner_propose_visit',
+      params: {
+        'target_application_id': applicationId,
+        'proposed_slots': slots.map((e) => e.toUtc().toIso8601String()).toList(),
+      },
+    );
   }
 
-  Future<void> accept(String applicationId) async {
-    await _supabase.rpc('owner_decide_application', params: {
-      'target_application_id': applicationId,
-      'decision': 'accepted',
-    });
+  Future<void> rejectApplication(String applicationId) async {
+    await _supabase.rpc(
+      'owner_reject_application',
+      params: {'target_application_id': applicationId},
+    );
   }
 
-  Future<void> reject(String applicationId) async {
-    await _supabase.rpc('owner_decide_application', params: {
-      'target_application_id': applicationId,
-      'decision': 'rejected',
-    });
+  Future<void> acceptApplication(String applicationId) async {
+    await _supabase.rpc(
+      'owner_accept_application',
+      params: {'target_application_id': applicationId},
+    );
+  }
+
+  DateTime? _date(dynamic value) {
+    if (value == null) return null;
+    return DateTime.tryParse(value.toString());
+  }
+
+  int _int(dynamic value, int fallback) {
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '') ?? fallback;
+  }
+
+  double _double(dynamic value) {
+    if (value is num) return value.toDouble();
+    return double.tryParse(value?.toString() ?? '') ?? 0;
   }
 }

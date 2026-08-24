@@ -15,9 +15,11 @@ class OwnerApplicationsScreen extends StatefulWidget {
 
 class _OwnerApplicationsScreenState extends State<OwnerApplicationsScreen> {
   final _service = OwnerApplicationsService();
+
   bool _loading = true;
   String? _error;
-  List<OwnerApplication> _items = [];
+  List<OwnerApplication> _applications = [];
+  int _tab = 0;
 
   @override
   void initState() {
@@ -26,28 +28,56 @@ class _OwnerApplicationsScreenState extends State<OwnerApplicationsScreen> {
   }
 
   Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
     try {
-      final items = await _service.loadApplications();
+      final data = await _service.loadApplications();
       if (!mounted) return;
-      setState(() { _items = items; _loading = false; _error = null; });
+      setState(() {
+        _applications = data;
+        _loading = false;
+      });
     } catch (e) {
       if (!mounted) return;
-      setState(() { _loading = false; _error = e.toString(); });
+      setState(() {
+        _loading = false;
+        _error = e.toString();
+      });
     }
   }
 
-  Future<void> _action(Future<void> Function() action) async {
-    try { await action(); await _load(); }
-    catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e'))); }
+  List<OwnerApplication> get _visible {
+    switch (_tab) {
+      case 1:
+        return _applications.where((e) => e.isAccepted).toList();
+      case 2:
+        return _applications.where((e) => e.isRejected).toList();
+      default:
+        return _applications.where((e) => e.isOpen).toList();
+    }
   }
 
-  List<DateTime> _defaultSlots() {
-    final now = DateTime.now();
-    return [
-      DateTime(now.year, now.month, now.day + 1, 18, 0),
-      DateTime(now.year, now.month, now.day + 2, 17, 30),
-      DateTime(now.year, now.month, now.day + 3, 12, 0),
-    ];
+  Future<void> _run(Future<void> Function() action, String success) async {
+    try {
+      await action();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(success), behavior: SnackBarBehavior.floating),
+      );
+      await _load();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No se pudo completar la acción: $e'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   @override
@@ -56,22 +86,61 @@ class _OwnerApplicationsScreenState extends State<OwnerApplicationsScreen> {
       backgroundColor: CohabiColors.background,
       bottomNavigationBar: OwnerBottomNavigation(
         currentIndex: 2,
-        onTap: (i) => handleOwnerNavigation(context, i),
+        onTap: (index) => handleOwnerNavigation(context, index),
       ),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _load,
+          color: CohabiColors.turquoise,
           child: ListView(
-            padding: const EdgeInsets.all(18),
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(18, 20, 18, 30),
             children: [
-              const Text('Solicitudes', style: TextStyle(color: CohabiColors.navy, fontSize: 30, fontWeight: FontWeight.w900)),
+              const Text(
+                'Solicitudes',
+                style: TextStyle(
+                  color: CohabiColors.navy,
+                  fontSize: 30,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
               const SizedBox(height: 6),
-              const Text('Candidatos interesados en tus habitaciones.', style: TextStyle(color: CohabiColors.textSecondary)),
-              const SizedBox(height: 24),
-              if (_loading) const Center(child: CircularProgressIndicator()),
-              if (_error != null) _errorCard(),
-              if (!_loading && _error == null && _items.isEmpty) const Center(child: Padding(padding: EdgeInsets.all(30), child: Text('Todavía no tienes solicitudes.'))),
-              ..._items.map(_card),
+              const Text(
+                'Gestiona las personas interesadas en tus habitaciones.',
+                style: TextStyle(
+                  color: CohabiColors.textSecondary,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(child: _tabButton(0, 'En curso')),
+                  const SizedBox(width: 8),
+                  Expanded(child: _tabButton(1, 'Aceptadas')),
+                  const SizedBox(width: 8),
+                  Expanded(child: _tabButton(2, 'Descartadas')),
+                ],
+              ),
+              const SizedBox(height: 20),
+              if (_loading)
+                const Padding(
+                  padding: EdgeInsets.only(top: 80),
+                  child: Center(
+                    child: CircularProgressIndicator(color: CohabiColors.turquoise),
+                  ),
+                )
+              else if (_error != null)
+                _errorCard()
+              else if (_visible.isEmpty)
+                _emptyCard()
+              else
+                ..._visible.map(
+                  (app) => Padding(
+                    padding: const EdgeInsets.only(bottom: 14),
+                    child: _applicationCard(app),
+                  ),
+                ),
             ],
           ),
         ),
@@ -79,29 +148,262 @@ class _OwnerApplicationsScreenState extends State<OwnerApplicationsScreen> {
     );
   }
 
-  Widget _errorCard() => Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(children: [Text(_error ?? 'Error'), TextButton(onPressed: _load, child: const Text('Reintentar'))])));
+  Widget _tabButton(int index, String label) {
+    final selected = _tab == index;
+    return OutlinedButton(
+      onPressed: () => setState(() => _tab = index),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: selected ? CohabiColors.turquoise : CohabiColors.navy,
+        backgroundColor: selected ? CohabiColors.turquoiseSoft : Colors.white,
+        side: BorderSide(
+          color: selected ? CohabiColors.turquoise : CohabiColors.border,
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        padding: const EdgeInsets.symmetric(vertical: 14),
+      ),
+      child: Text(label, style: const TextStyle(fontWeight: FontWeight.w800)),
+    );
+  }
 
-  Widget _card(OwnerApplication app) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 14),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(app.tenantName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: CohabiColors.navy)),
-          const SizedBox(height: 4),
-          Text('${app.propertyName} · Habitación ${app.roomNumber}'),
-          const SizedBox(height: 8),
-          Text('Estado: ${app.status}', style: const TextStyle(fontWeight: FontWeight.w700, color: CohabiColors.purple)),
-          if (app.visitScheduledAt != null) Text('Visita: ${app.visitScheduledAt!.toLocal()}'),
-          const SizedBox(height: 12),
-          Wrap(spacing: 8, runSpacing: 8, children: [
-            if (app.status == 'pending') OutlinedButton(onPressed: () => _action(() => _service.markUnderReview(app.id)), child: const Text('Revisar')),
-            if (app.status == 'pending' || app.status == 'under_review') ElevatedButton(onPressed: () => _action(() => _service.proposeVisit(app.id, _defaultSlots())), child: const Text('Proponer visita')),
-            if (app.status == 'visit_confirmed') ElevatedButton(onPressed: () => _action(() => _service.accept(app.id)), child: const Text('Aceptar')),
-            if (app.isOpen) OutlinedButton(onPressed: () => _action(() => _service.reject(app.id)), child: const Text('Rechazar')),
-          ]),
-        ]),
+  Widget _applicationCard(OwnerApplication app) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: CohabiColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: const BoxDecoration(
+                  color: CohabiColors.purpleSoft,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.person_rounded, color: CohabiColors.purple),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      app.tenantName,
+                      style: const TextStyle(
+                        color: CohabiColors.navy,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '${app.propertyName} · Habitación ${app.roomNumber}',
+                      style: const TextStyle(color: CohabiColors.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+              _statusPill(app.status),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 14,
+            runSpacing: 8,
+            children: [
+              _info(Icons.location_on_outlined, app.city),
+              _info(Icons.euro_rounded, '${app.monthlyPrice.toStringAsFixed(0)} €/mes'),
+              if (app.visitScheduledAt != null)
+                _info(Icons.event_available_outlined, _dateTime(app.visitScheduledAt!)),
+            ],
+          ),
+          if (app.status == 'pending') ...[
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => _run(
+                      () => _service.rejectApplication(app.id),
+                      'Solicitud descartada.',
+                    ),
+                    child: const Text('Descartar'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () => _run(
+                      () => _service.markUnderReview(app.id),
+                      'Solicitud marcada en revisión.',
+                    ),
+                    child: const Text('Revisar'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+          if (app.status == 'under_review') ...[
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => _run(
+                      () => _service.rejectApplication(app.id),
+                      'Solicitud descartada.',
+                    ),
+                    child: const Text('Descartar'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: () => _run(
+                      () => _service.proposeVisit(app.id),
+                      'Visita propuesta al inquilino.',
+                    ),
+                    icon: const Icon(Icons.calendar_month_outlined),
+                    label: const Text('Proponer visita'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+          if (app.status == 'visit_proposed') ...[
+            const SizedBox(height: 14),
+            const Text(
+              'Esperando a que el inquilino elija uno de los horarios propuestos.',
+              style: TextStyle(color: CohabiColors.textSecondary),
+            ),
+          ],
+          if (app.status == 'visit_confirmed') ...[
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => _run(
+                      () => _service.rejectApplication(app.id),
+                      'Solicitud rechazada.',
+                    ),
+                    child: const Text('Rechazar'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: CohabiColors.primaryGradient,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: TextButton(
+                      onPressed: () => _run(
+                        () => _service.acceptApplication(app.id),
+                        'Solicitud aceptada. Habitación marcada como ocupada.',
+                      ),
+                      child: const Text(
+                        'Aceptar candidato',
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
       ),
     );
+  }
+
+  Widget _statusPill(String status) {
+    final label = switch (status) {
+      'pending' => 'Nueva',
+      'under_review' => 'En revisión',
+      'visit_proposed' => 'Visita propuesta',
+      'visit_confirmed' => 'Visita confirmada',
+      'accepted' => 'Aceptada',
+      'rejected' => 'Rechazada',
+      'withdrawn' => 'Retirada',
+      'visit_declined' => 'Visita rechazada',
+      _ => status,
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: CohabiColors.purpleSoft,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: CohabiColors.purple,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+
+  Widget _info(IconData icon, String text) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 17, color: CohabiColors.turquoise),
+          const SizedBox(width: 5),
+          Text(text, style: const TextStyle(color: CohabiColors.textSecondary)),
+        ],
+      );
+
+  Widget _errorCard() => Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: CohabiColors.border),
+        ),
+        child: Column(
+          children: [
+            const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 42),
+            const SizedBox(height: 10),
+            Text(_error ?? 'Error desconocido', textAlign: TextAlign.center),
+            const SizedBox(height: 12),
+            FilledButton(onPressed: _load, child: const Text('Reintentar')),
+          ],
+        ),
+      );
+
+  Widget _emptyCard() => Container(
+        padding: const EdgeInsets.all(28),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: CohabiColors.border),
+        ),
+        child: const Column(
+          children: [
+            Icon(Icons.assignment_outlined, color: CohabiColors.turquoise, size: 48),
+            SizedBox(height: 10),
+            Text(
+              'No hay solicitudes en esta sección.',
+              style: TextStyle(color: CohabiColors.navy, fontWeight: FontWeight.w800),
+            ),
+          ],
+        ),
+      );
+
+  String _dateTime(DateTime value) {
+    final local = value.toLocal();
+    final day = local.day.toString().padLeft(2, '0');
+    final month = local.month.toString().padLeft(2, '0');
+    final hour = local.hour.toString().padLeft(2, '0');
+    final minute = local.minute.toString().padLeft(2, '0');
+    return '$day/$month · $hour:$minute';
   }
 }

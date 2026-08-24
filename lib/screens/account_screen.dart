@@ -10,6 +10,7 @@ import '../core/widgets/cohabi_snackbar.dart';
 import '../features/account/models/account_state.dart';
 import '../features/account/services/account_service.dart';
 import '../features/account/widgets/widgets.dart';
+import '../features/tenant_profile/screens/tenant_profile_edit_screen.dart';
 import 'enable_owner_profile_screen.dart';
 import 'enable_tenant_profile_screen.dart';
 import 'properties_dashboard_screen.dart';
@@ -183,11 +184,17 @@ class _AccountScreenState extends State<AccountScreen> {
 
   Future<void> _openTenantProfile() async {
     final account = _account;
-    if (account == null || account.hasTenantProfile) return;
+    if (account == null) return;
+
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const EnableTenantProfileScreen()),
+      MaterialPageRoute(
+        builder: (_) => account.hasTenantProfile
+            ? const TenantProfileEditScreen()
+            : const EnableTenantProfileScreen(),
+      ),
     );
+
     if (mounted) await _loadAccount();
   }
 
@@ -305,9 +312,9 @@ class _AccountScreenState extends State<AccountScreen> {
               },
             )
           : OwnerBottomNavigation(
-              currentIndex: 4,
+              currentIndex: 6,
               onTap: (index) {
-                if (index == 4) return;
+                if (index == 6) return;
                 handleOwnerNavigation(context, index);
               },
             ),
