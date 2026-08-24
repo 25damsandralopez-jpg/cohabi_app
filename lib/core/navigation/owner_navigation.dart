@@ -1,41 +1,32 @@
 import 'package:flutter/material.dart';
 
+import '../../features/owner_applications/screens/owner_applications_screen.dart';
+import '../../features/owner_applications/screens/owner_visits_screen.dart';
 import '../../screens/account_screen.dart';
 import '../../screens/properties_dashboard_screen.dart';
 
 void handleOwnerNavigation(BuildContext context, int index) {
+  Widget screen;
   switch (index) {
     case 0:
     case 1:
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const PropertiesDashboardScreen()),
-        (_) => false,
-      );
-      return;
+      screen = const PropertiesDashboardScreen();
+      break;
     case 2:
-      _showComingSoon(context, 'Solicitudes');
-      return;
+      screen = const OwnerApplicationsScreen();
+      break;
     case 3:
-      _showComingSoon(context, 'Visitas');
-      return;
+      screen = const OwnerVisitsScreen();
+      break;
     case 4:
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const AccountScreen()),
-        (_) => false,
-      );
+      screen = const AccountScreen();
+      break;
+    default:
       return;
   }
-}
-
-void _showComingSoon(BuildContext context, String section) {
-  ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(
-      SnackBar(
-        content: Text('$section estará disponible próximamente.'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  Navigator.pushAndRemoveUntil(
+    context,
+    MaterialPageRoute(builder: (_) => screen),
+    (_) => false,
+  );
 }

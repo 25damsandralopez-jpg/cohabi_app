@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'property_photos_screen.dart';
 
 import '../core/theme/app_colors.dart';
@@ -712,19 +713,39 @@ class _PropertyFeaturesScreenState extends State<PropertyFeaturesScreen> {
   // BOTÓN CONTINUAR
   // ---------------------------------------------------------
 
+  Future<void> _saveAndContinue() async {
+    try {
+      await Supabase.instance.client.from('properties').update({
+        'tenant_type': _tenantType,
+        'features': _features.toList(),
+        'services': _services.toList(),
+        'other_services': _otherServicesController.text.trim(),
+      }).eq('id', widget.propertyId);
+
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PropertyPhotosScreen(
+            propertyId: widget.propertyId,
+            roomCount: widget.roomCount,
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No se pudieron guardar las características del piso: $error'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   Widget _buildContinueButton() {
     return InkWell(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => PropertyPhotosScreen(
-              propertyId: widget.propertyId,
-              roomCount: widget.roomCount,
-            ),
-          ),
-        );
-      },
+      onTap: _saveAndContinue,
       borderRadius: BorderRadius.circular(15),
       child: Container(
         height: 56,

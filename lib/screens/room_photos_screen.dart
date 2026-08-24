@@ -105,13 +105,31 @@ class _RoomPhotosScreenState extends State<RoomPhotosScreen> {
           ),
         );
 
+        final spaceType = 'habitacion-${widget.roomIndex + 1}';
+
+        await supabase
+            .from('property_photos')
+            .delete()
+            .eq('property_id', widget.propertyId)
+            .eq('space_type', spaceType)
+            .eq('position', position);
+
         await supabase.from('property_photos').insert({
           'property_id': widget.propertyId,
           'owner_id': user.id,
-          'space_type': 'habitacion-${widget.roomIndex + 1}',
+          'space_type': spaceType,
           'storage_path': storagePath,
           'position': position,
         });
+      }
+
+      // Cuando se guarda la última habitación, el piso queda publicado.
+      if (widget.roomIndex + 1 >= widget.roomCount) {
+        await supabase
+            .from('properties')
+            .update({'status': 'published'})
+            .eq('id', widget.propertyId)
+            .eq('owner_id', user.id);
       }
 
       if (!mounted) return;
