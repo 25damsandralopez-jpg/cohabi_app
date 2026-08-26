@@ -6,6 +6,7 @@ import '../core/theme/app_colors.dart';
 import '../core/navigation/owner_navigation.dart';
 import '../core/widgets/owner_bottom_navigation.dart';
 import 'property_register_screen.dart';
+import '../features/owner_properties/screens/owner_property_detail_screen.dart';
 
 class PropertiesDashboardScreen extends StatefulWidget {
   const PropertiesDashboardScreen({super.key});
@@ -157,9 +158,9 @@ class _PropertiesDashboardScreenState extends State<PropertiesDashboardScreen> {
               // ==================================================
               // TÍTULO DEL RESUMEN
               // ==================================================
-              Row(
+              const Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       'Mis propiedades',
                       style: TextStyle(
@@ -167,28 +168,6 @@ class _PropertiesDashboardScreenState extends State<PropertiesDashboardScreen> {
                         fontSize: 19,
                         fontWeight: FontWeight.w800,
                       ),
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () {},
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'Ver todas',
-                          style: TextStyle(
-                            color: CohabiColors.turquoise,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        SizedBox(width: 2),
-                        Icon(
-                          Icons.chevron_right_rounded,
-                          color: CohabiColors.turquoise,
-                          size: 22,
-                        ),
-                      ],
                     ),
                   ),
                 ],
@@ -258,15 +237,19 @@ class _PropertiesDashboardScreenState extends State<PropertiesDashboardScreen> {
 
   Widget _buildPropertyCard(_PropertySummary property) {
     return InkWell(
-      onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Después conectaremos la gestión de ${property.name}.',
+      onTap: () async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => OwnerPropertyDetailScreen(
+              propertyId: property.id,
             ),
-            behavior: SnackBarBehavior.floating,
           ),
         );
+
+        if (mounted) {
+          await _refresh();
+        }
       },
       borderRadius: BorderRadius.circular(22),
       child: Container(

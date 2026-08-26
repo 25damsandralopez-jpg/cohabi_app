@@ -5,10 +5,20 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/owner_bottom_navigation.dart';
 import '../models/owner_application.dart';
 import 'owner_candidate_profile_screen.dart';
+import 'owner_visits_screen.dart';
 import '../services/owner_applications_service.dart';
 
 class OwnerApplicationsScreen extends StatefulWidget {
-  const OwnerApplicationsScreen({super.key});
+  final String? roomId;
+  final String? propertyName;
+  final int? roomNumber;
+
+  const OwnerApplicationsScreen({
+    super.key,
+    this.roomId,
+    this.propertyName,
+    this.roomNumber,
+  });
 
   @override
   State<OwnerApplicationsScreen> createState() => _OwnerApplicationsScreenState();
@@ -51,13 +61,17 @@ class _OwnerApplicationsScreenState extends State<OwnerApplicationsScreen> {
   }
 
   List<OwnerApplication> get _visible {
+    final scoped = widget.roomId == null
+        ? _applications
+        : _applications.where((e) => e.roomId == widget.roomId).toList();
+
     switch (_tab) {
       case 1:
-        return _applications.where((e) => e.isAccepted).toList();
+        return scoped.where((e) => e.isAccepted).toList();
       case 2:
-        return _applications.where((e) => e.isRejected).toList();
+        return scoped.where((e) => e.isRejected).toList();
       default:
-        return _applications.where((e) => e.isOpen).toList();
+        return scoped.where((e) => e.isOpen).toList();
     }
   }
 
@@ -113,18 +127,45 @@ class _OwnerApplicationsScreenState extends State<OwnerApplicationsScreen> {
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(18, 20, 18, 30),
             children: [
-              const Text(
-                'Solicitudes',
-                style: TextStyle(
-                  color: CohabiColors.navy,
-                  fontSize: 30,
-                  fontWeight: FontWeight.w900,
-                ),
+              Row(
+                children: [
+                  if (widget.roomId != null) ...[
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.arrow_back_rounded),
+                    ),
+                    const SizedBox(width: 4),
+                  ],
+                  Expanded(
+                    child: Text(
+                      widget.roomId == null
+                          ? 'Solicitudes'
+                          : 'Candidatos · Habitación ${widget.roomNumber ?? ''}',
+                      style: const TextStyle(
+                        color: CohabiColors.navy,
+                        fontSize: 30,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const OwnerVisitsScreen(),
+                      ),
+                    ),
+                    icon: const Icon(Icons.event_available_outlined, size: 18),
+                    label: const Text('Visitas'),
+                  ),
+                ],
               ),
               const SizedBox(height: 6),
-              const Text(
-                'Gestiona las personas interesadas en tus habitaciones.',
-                style: TextStyle(
+              Text(
+                widget.roomId == null
+                    ? 'Gestiona las personas interesadas en tus habitaciones.'
+                    : '${widget.propertyName ?? 'Propiedad'} · Solicitudes reales de esta habitación.',
+                style: const TextStyle(
                   color: CohabiColors.textSecondary,
                   fontSize: 14,
                 ),

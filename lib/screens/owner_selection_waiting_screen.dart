@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'owner_room_candidates_screen.dart';
+import '../features/owner_applications/screens/owner_applications_screen.dart';
 import 'cohabi_selection_ready_screen.dart';
 import 'properties_dashboard_screen.dart';
 
@@ -1257,14 +1257,10 @@ class _OwnerSelectionWaitingScreenState
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => OwnerRoomCandidatesScreen(
+        builder: (_) => OwnerApplicationsScreen(
+          roomId: room.id,
           propertyName: propertyName,
           roomNumber: room.roomNumber,
-          candidateCount: room.candidateCount,
-
-          // IMPORTANTE:
-          // En el siguiente paso añadiremos roomId al constructor
-          // de OwnerRoomCandidatesScreen.
         ),
       ),
     );

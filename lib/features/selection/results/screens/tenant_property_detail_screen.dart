@@ -27,6 +27,8 @@ class _TenantPropertyDetailScreenState extends State<TenantPropertyDetailScreen>
 
   bool _loading = true;
   bool _sending = false;
+  bool _favoriteBusy = false;
+  late bool _isFavorite;
   String? _error;
   Map<String, dynamic> _property = {};
   Map<String, dynamic> _room = {};
@@ -35,6 +37,7 @@ class _TenantPropertyDetailScreenState extends State<TenantPropertyDetailScreen>
   @override
   void initState() {
     super.initState();
+    _isFavorite = widget.match.isFavorite;
     _load();
   }
 
@@ -89,6 +92,23 @@ class _TenantPropertyDetailScreenState extends State<TenantPropertyDetailScreen>
         _loading = false;
         _error = e.toString();
       });
+    }
+  }
+
+  Future<void> _toggleFavorite() async {
+    if (_favoriteBusy) return;
+    setState(() => _favoriteBusy = true);
+    try {
+      final value = await _matchesService.toggleFavorite(widget.match);
+      if (!mounted) return;
+      setState(() => _isFavorite = value);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudo actualizar favoritos: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _favoriteBusy = false);
     }
   }
 
@@ -232,8 +252,13 @@ class _TenantPropertyDetailScreenState extends State<TenantPropertyDetailScreen>
               ),
             ),
             IconButton.filledTonal(
-              onPressed: () {},
-              icon: const Icon(Icons.favorite_border_rounded),
+              onPressed: _favoriteBusy ? null : _toggleFavorite,
+              icon: Icon(
+                _isFavorite
+                    ? Icons.favorite_rounded
+                    : Icons.favorite_border_rounded,
+                color: _isFavorite ? CohabiColors.coral : null,
+              ),
             ),
           ],
         ),

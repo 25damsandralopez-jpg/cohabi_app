@@ -7,7 +7,14 @@ import '../../selection/services/tenant_selection_service.dart';
 import '../widgets/selection_widgets.dart';
 import '../results/screens/tenant_best_matches_screen.dart';
 class TenantSelectionScreen extends StatefulWidget {
-  const TenantSelectionScreen({super.key});
+  const TenantSelectionScreen({
+    super.key,
+    this.editMode = false,
+  });
+
+  /// Reutiliza exactamente el mismo cuestionario inicial para editar
+  /// las preferencias ya guardadas.
+  final bool editMode;
 
   @override
   State<TenantSelectionScreen> createState() => _TenantSelectionScreenState();
@@ -46,8 +53,8 @@ class _TenantSelectionScreenState extends State<TenantSelectionScreen> {
       _additionalInfoController.text = (_data['additional_info'] ?? '').toString();
       if (!mounted) return;
       setState(() {
-        _step = profile.currentStep.clamp(1, 8);
-        _completed = profile.completed;
+        _step = widget.editMode ? 1 : profile.currentStep.clamp(1, 8);
+        _completed = widget.editMode ? false : profile.completed;
         _loading = false;
       });
     } catch (e) {
@@ -171,6 +178,12 @@ class _TenantSelectionScreenState extends State<TenantSelectionScreen> {
       if (_step == 8) {
         await _service.complete(values);
         if (!mounted) return;
+
+        if (widget.editMode) {
+          Navigator.pop(context, true);
+          return;
+        }
+
         setState(() => _completed = true);
       } else {
         await _service.saveStep(_step, values);
@@ -2789,15 +2802,19 @@ class _TenantSelectionScreenState extends State<TenantSelectionScreen> {
           ),
           const SizedBox(height: 16),
           TextButton(
-            onPressed: () async {
-              await _service.restart();
-              if (!mounted) return;
+            onPressed: () {
               setState(() {
                 _completed = false;
                 _step = 1;
               });
             },
-            child: const Text('Editar mi perfil de Selección', style: TextStyle(color: CohabiColors.purple, fontWeight: FontWeight.w700)),
+            child: const Text(
+              'Editar mi perfil de Selección',
+              style: TextStyle(
+                color: CohabiColors.purple,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
         ],
       ),

@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/tenant_bottom_navigation.dart';
 import '../models/tenant_match.dart';
 import '../services/tenant_matches_service.dart';
+import '../../screens/tenant_selection_screen.dart';
 import 'tenant_interest_sent_screen.dart';
 import 'tenant_property_detail_screen.dart';
 
@@ -20,7 +21,7 @@ class _TenantBestMatchesScreenState extends State<TenantBestMatchesScreen> {
 
   bool _loading = true;
   String? _error;
-  String _sort = 'price';
+  String _sort = 'compatibility';
   List<TenantMatch> _matches = [];
 
   @override
@@ -177,7 +178,7 @@ class _TenantBestMatchesScreenState extends State<TenantBestMatchesScreen> {
                       final match = _matches[index];
                       return _MatchCard(
                         match: match,
-                        best: false,
+                        best: index == 0 && _sort == 'compatibility',
                         onFavorite: () => _toggleFavorite(index),
                         onView: () => _showDetails(match),
                         onApply: () => _apply(index),
@@ -201,7 +202,7 @@ class _TenantBestMatchesScreenState extends State<TenantBestMatchesScreen> {
           Row(
             children: [
               IconButton(
-                onPressed: () => handleTenantNavigation(context, 0),
+                onPressed: () => handleTenantNavigation(context, 1),
                 icon: const Icon(Icons.arrow_back_ios_new_rounded, color: CohabiColors.navy),
               ),
               const Expanded(
@@ -217,9 +218,9 @@ class _TenantBestMatchesScreenState extends State<TenantBestMatchesScreen> {
                 ),
               ),
               OutlinedButton.icon(
-                onPressed: () => _showFilters(),
+                onPressed: _openPreferences,
                 icon: const Icon(Icons.tune_rounded, size: 18),
-                label: const Text('Filtros'),
+                label: const Text('Ajustar preferencias'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: CohabiColors.purple,
                   side: const BorderSide(color: CohabiColors.border),
@@ -230,7 +231,7 @@ class _TenantBestMatchesScreenState extends State<TenantBestMatchesScreen> {
           ),
           const SizedBox(height: 28),
           const Text(
-            'Tus mejores opciones ✨',
+            'Pisos compatibles contigo ✨',
             style: TextStyle(
               color: CohabiColors.navy,
               fontSize: 30,
@@ -240,8 +241,8 @@ class _TenantBestMatchesScreenState extends State<TenantBestMatchesScreen> {
           const SizedBox(height: 8),
           Text(
             _matches.isEmpty
-                ? 'Buscamos viviendas publicadas que encajen con tus preferencias.'
-                : 'Hemos encontrado ${_matches.length} opciones que encajan con tu búsqueda. Las ordenamos usando tus preferencias de Cohabi Selección.',
+                ? 'Buscamos habitaciones publicadas que cumplan tus preferencias de búsqueda y los requisitos del piso.'
+                : 'Hemos encontrado ${_matches.length} opciones compatibles. Están ordenadas usando los criterios que podemos comprobar con tus preferencias y los requisitos de cada piso.',
             style: const TextStyle(
               color: CohabiColors.textSecondary,
               fontSize: 14,
@@ -254,7 +255,7 @@ class _TenantBestMatchesScreenState extends State<TenantBestMatchesScreen> {
             child: Row(
               children: [
                 _SortChip(
-                  label: 'Todos',
+                  label: 'Compatibilidad',
                   icon: Icons.track_changes_rounded,
                   selected: _sort == 'compatibility',
                   onTap: () => _setSort('compatibility'),
@@ -288,37 +289,17 @@ class _TenantBestMatchesScreenState extends State<TenantBestMatchesScreen> {
     );
   }
 
-  void _showFilters() {
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) => Padding(
-        padding: const EdgeInsets.fromLTRB(22, 6, 22, 30),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Filtros de Selección',
-              style: TextStyle(color: CohabiColors.navy, fontSize: 22, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              'Por ahora usamos automáticamente la ciudad, presupuesto y fecha de entrada de tu perfil. Más adelante podrás ajustarlos aquí sin cambiar tu perfil principal.',
-              style: TextStyle(color: CohabiColors.textSecondary, height: 1.45),
-            ),
-            const SizedBox(height: 18),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Entendido'),
-              ),
-            ),
-          ],
-        ),
+  Future<void> _openPreferences() async {
+    final changed = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const TenantSelectionScreen(editMode: true),
       ),
     );
+
+    if (changed == true) {
+      await _load();
+    }
   }
 
   Widget _errorState() {
@@ -444,12 +425,33 @@ class _MatchCard extends StatelessWidget {
             ),
             child: Column(
               children: [
+                const Icon(Icons.check_rounded, color: Colors.white, size: 25),
+                const SizedBox(height: 4),
                 Text(
-                  '${match.score}%',
-                  style: const TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w900, height: 1),
+                  '${match.score}% compatible',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
-                const SizedBox(height: 3),
-                const Text('encaje', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 2),
+                Text(
+                  match.score >= 85
+                      ? 'Muy compatible'
+                      : match.score >= 65
+                          ? 'Compatible'
+                          : match.score >= 45
+                              ? 'Compatibilidad media'
+                              : 'Compatibilidad baja',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ],
             ),
           ),

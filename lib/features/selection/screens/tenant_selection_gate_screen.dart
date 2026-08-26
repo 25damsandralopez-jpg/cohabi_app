@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../screens/tenant_account_created_screen.dart';
-import '../results/screens/tenant_best_matches_screen.dart';
+import 'tenant_selection_hub_screen.dart';
 import '../services/tenant_selection_service.dart';
 
 class TenantSelectionGateScreen extends StatefulWidget {
@@ -79,9 +79,9 @@ class _TenantSelectionGateScreenState
     }
 
     // Si ya completó Cohabi Selección:
-    // mostramos directamente sus pisos compatibles.
+    // la pestaña Selección se convierte en el centro de control del perfil.
     if (_completed) {
-      return const TenantBestMatchesScreen();
+      return const TenantSelectionHubScreen();
     }
 
     // Si todavía NO ha completado Cohabi Selección:

@@ -204,17 +204,19 @@ class TenantHomeScreen extends StatelessWidget {
 
                     const SizedBox(height: 14),
 
-                    Container(
-                      padding: const EdgeInsets.all(17),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius:
-                        BorderRadius.circular(20),
-                        border: Border.all(
-                          color: CohabiColors.border,
+                    InkWell(
+                      onTap: () => handleTenantNavigation(context, 1),
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        padding: const EdgeInsets.all(17),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: CohabiColors.border,
+                          ),
                         ),
-                      ),
-                      child: const Row(
+                        child: const Row(
                         children: [
                           _HomeInfoIcon(
                             icon:
@@ -260,6 +262,7 @@ class TenantHomeScreen extends StatelessWidget {
                             CohabiColors.textSecondary,
                           ),
                         ],
+                        ),
                       ),
                     ),
 
@@ -291,9 +294,8 @@ class TenantHomeScreen extends StatelessWidget {
                             'Revisa tus solicitudes',
                             color:
                             CohabiColors.purple,
-                            onTap: () {
-                              // TenantApplicationsScreen()
-                            },
+                            onTap: () =>
+                                handleTenantNavigation(context, 2),
                           ),
                         ),
 
@@ -308,9 +310,8 @@ class TenantHomeScreen extends StatelessWidget {
                             'Tu estancia activa',
                             color:
                             CohabiColors.turquoise,
-                            onTap: () {
-                              // TenantMyHomeScreen()
-                            },
+                            onTap: () =>
+                                handleTenantNavigation(context, 3),
                           ),
                         ),
                       ],

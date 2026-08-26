@@ -603,6 +603,25 @@ class _OwnerHomeScreenState extends State<OwnerHomeScreen> {
   // ---------------------------------------------------------------------------
 
 
+  void _openAttention() {
+    if (_openIncidents > 0) {
+      _goToIncidents();
+      return;
+    }
+    if (_candidatesPendingReview > 0) {
+      _openApplications();
+      return;
+    }
+    if (_availableRoomCount > 0) {
+      _openProperties();
+      return;
+    }
+    if (_endingSoonCount > 0) {
+      _openTenants();
+      return;
+    }
+  }
+
   void _openProperties() {
     Navigator.push(
       context,
@@ -849,8 +868,8 @@ class _OwnerHomeScreenState extends State<OwnerHomeScreen> {
       children: [
         _SectionHeader(
           title: 'Necesita tu atención',
-          action: 'Ver todo (${_openIncidents + _availableRoomCount + _candidatesPendingReview + _endingSoonCount})',
-          onTap: () {},
+          action: 'Revisar pendientes (${_openIncidents + _availableRoomCount + _candidatesPendingReview + _endingSoonCount})',
+          onTap: _openAttention,
         ),
         const SizedBox(height: 13),
         if (wide)
