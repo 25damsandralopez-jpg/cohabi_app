@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'cohabi_selection_screen.dart';
 import '../core/theme/app_colors.dart';
 import 'properties_dashboard_screen.dart';
 import 'property_rooms_screen.dart';
@@ -541,12 +542,10 @@ class PropertyCompletedScreen extends StatelessWidget {
   Widget _buildSelectionCard(BuildContext context) {
     return InkWell(
       onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Cohabi Selección la conectaremos más adelante.',
-            ),
-            behavior: SnackBarBehavior.floating,
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const CohabiSelectionScreen(),
           ),
         );
       },

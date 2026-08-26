@@ -1,25 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'cohabi_selection_screen.dart';
 import '../core/theme/app_colors.dart';
 import '../core/navigation/owner_navigation.dart';
 import '../core/widgets/owner_bottom_navigation.dart';
 import 'property_register_screen.dart';
-import '../features/owner_properties/screens/owner_property_detail_screen.dart';
-import '../features/owner_applications/screens/owner_applications_screen.dart';
 
 class PropertiesDashboardScreen extends StatefulWidget {
-  const PropertiesDashboardScreen({
-    super.key,
-  });
+  const PropertiesDashboardScreen({super.key});
 
   @override
   State<PropertiesDashboardScreen> createState() =>
       _PropertiesDashboardScreenState();
 }
 
-class _PropertiesDashboardScreenState
-    extends State<PropertiesDashboardScreen> {
+class _PropertiesDashboardScreenState extends State<PropertiesDashboardScreen> {
   bool _isLoading = true;
   String? _errorMessage;
 
@@ -46,7 +42,7 @@ class _PropertiesDashboardScreenState
 
       final propertiesResponse = await supabase
           .from('properties')
-          .select('id, name, address, city, rooms')
+          .select('id, name, city, rooms')
           .eq('owner_id', user.id);
 
       final List<dynamic> propertiesData = propertiesResponse;
@@ -69,59 +65,6 @@ class _PropertiesDashboardScreenState
             .eq('property_id', propertyId);
 
         final List<dynamic> roomsData = roomsResponse;
-
-        int tenantCount = 0;
-        double monthlyIncome = 0;
-        int openIncidents = 0;
-        String? nextEntry;
-        String? nextExit;
-
-        try {
-          final tenanciesResponse = await supabase
-              .from('tenancies')
-              .select('status, start_date, end_date, monthly_rent')
-              .eq('property_id', propertyId)
-              .inFilter('status', ['reserved', 'active', 'ending']);
-          final tenancies = List<Map<String, dynamic>>.from(
-            (tenanciesResponse as List).map((e) => Map<String, dynamic>.from(e as Map)),
-          );
-          tenantCount = tenancies.where((t) => t['status'] == 'active').length;
-          monthlyIncome = tenancies
-              .where((t) => ['reserved', 'active', 'ending'].contains(t['status']))
-              .fold<double>(0, (sum, t) {
-            final value = t['monthly_rent'];
-            return sum + (value is num ? value.toDouble() : double.tryParse('$value') ?? 0);
-          });
-
-          final today = DateTime.now();
-          final entries = tenancies
-              .where((t) => t['status'] == 'reserved' && t['start_date'] != null)
-              .map((t) => DateTime.tryParse(t['start_date'].toString()))
-              .whereType<DateTime>()
-              .where((d) => !d.isBefore(DateTime(today.year, today.month, today.day)))
-              .toList()
-            ..sort();
-          if (entries.isNotEmpty) nextEntry = _formatDate(entries.first);
-
-          final exits = tenancies
-              .where((t) => ['active', 'ending'].contains(t['status']) && t['end_date'] != null)
-              .map((t) => DateTime.tryParse(t['end_date'].toString()))
-              .whereType<DateTime>()
-              .where((d) => !d.isBefore(DateTime(today.year, today.month, today.day)))
-              .toList()
-            ..sort();
-          if (exits.isNotEmpty) nextExit = _formatDate(exits.first);
-        } catch (_) {}
-
-        try {
-          final incidentsResponse = await supabase
-              .from('incidents')
-              .select('status')
-              .eq('property_id', propertyId);
-          openIncidents = (incidentsResponse as List)
-              .where((i) => !['resolved', 'closed'].contains((i as Map)['status']))
-              .length;
-        } catch (_) {}
 
         // Número TOTAL de habitaciones declarado al crear el piso.
         final totalRooms = property['rooms'] as int? ?? 0;
@@ -147,16 +90,12 @@ class _PropertiesDashboardScreenState
         final List<dynamic> photosData = photosResponse;
 
         if (photosData.isNotEmpty) {
-          final storagePath =
-          photosData.first['storage_path'] as String?;
+          final storagePath = photosData.first['storage_path'] as String?;
 
           if (storagePath != null && storagePath.isNotEmpty) {
             imageUrl = await supabase.storage
                 .from('property-photos')
-                .createSignedUrl(
-              storagePath,
-              3600,
-            );
+                .createSignedUrl(storagePath, 3600);
           }
         }
 
@@ -167,11 +106,6 @@ class _PropertiesDashboardScreenState
             city: property['city']?.toString() ?? '',
             totalRooms: totalRooms,
             availableRooms: availableRooms,
-            tenantCount: tenantCount,
-            monthlyIncome: monthlyIncome,
-            openIncidents: openIncidents,
-            nextEntry: nextEntry,
-            nextExit: nextExit,
             imageUrl: imageUrl,
           ),
         );
@@ -197,10 +131,6 @@ class _PropertiesDashboardScreenState
     }
   }
 
-  String _formatDate(DateTime date) {
-    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
-  }
-
   Future<void> _refresh() async {
     setState(() {
       _isLoading = true;
@@ -218,19 +148,11 @@ class _PropertiesDashboardScreenState
         child: RefreshIndicator(
           onRefresh: _refresh,
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(
-              18,
-              20,
-              18,
-              32,
-            ),
+            padding: const EdgeInsets.fromLTRB(18, 20, 18, 32),
             children: [
               // ==================================================
               // PROPIEDAD CREADA
               // ==================================================
-              _buildSuccessHeader(),
-
-              const SizedBox(height: 30),
 
               // ==================================================
               // TÍTULO DEL RESUMEN
@@ -239,7 +161,7 @@ class _PropertiesDashboardScreenState
                 children: [
                   const Expanded(
                     child: Text(
-                      'Resumen de tus propiedades',
+                      'Mis propiedades',
                       style: TextStyle(
                         color: CohabiColors.navy,
                         fontSize: 19,
@@ -289,14 +211,14 @@ class _PropertiesDashboardScreenState
               else if (_errorMessage != null)
                 _buildErrorBox()
               else if (_properties.isEmpty)
-                  _buildEmptyState()
-                else
-                  ..._properties.map(
-                        (property) => Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: _buildPropertyCard(property),
-                    ),
+                _buildEmptyState()
+              else
+                ..._properties.map(
+                  (property) => Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: _buildPropertyCard(property),
                   ),
+                ),
 
               const SizedBox(height: 4),
 
@@ -329,31 +251,6 @@ class _PropertiesDashboardScreenState
   // CABECERA
   // ============================================================
 
-  Widget _buildSuccessHeader() {
-    return Column(
-      children: [
-        Image.asset(
-          'assets/images/property_completed.png',
-          width: 160,
-          height: 160,
-          fit: BoxFit.contain,
-        ),
-
-        const SizedBox(height: 8),
-
-        const Text(
-          '¡Tu propiedad\nha sido creada!',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: CohabiColors.navy,
-            fontSize: 33,
-            height: 1.06,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-      ],
-    );
-  }
 
   // ============================================================
   // TARJETA DE PROPIEDAD
@@ -362,12 +259,14 @@ class _PropertiesDashboardScreenState
   Widget _buildPropertyCard(_PropertySummary property) {
     return InkWell(
       onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => OwnerPropertyDetailScreen(propertyId: property.id),
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Después conectaremos la gestión de ${property.name}.',
+            ),
+            behavior: SnackBarBehavior.floating,
           ),
-        ).then((_) => _refresh());
+        );
       },
       borderRadius: BorderRadius.circular(22),
       child: Container(
@@ -375,9 +274,7 @@ class _PropertiesDashboardScreenState
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(22),
-          border: Border.all(
-            color: const Color(0xFFE5E7EF),
-          ),
+          border: Border.all(color: const Color(0xFFE5E7EF)),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.025),
@@ -463,7 +360,6 @@ class _PropertiesDashboardScreenState
             // ====================================================
             // 4 MÉTRICAS
             // ====================================================
-
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -472,7 +368,7 @@ class _PropertiesDashboardScreenState
                     icon: Icons.bed_outlined,
                     title: 'Habitaciones\ndisponibles',
                     value:
-                    '${property.availableRooms} / ${property.totalRooms}',
+                        '${property.availableRooms} / ${property.totalRooms}',
                     accent: CohabiColors.turquoise,
                   ),
                 ),
@@ -483,7 +379,7 @@ class _PropertiesDashboardScreenState
                   child: _buildStatistic(
                     icon: Icons.person_outline_rounded,
                     title: 'Inquilinos',
-                    value: '${property.tenantCount}',
+                    value: '0',
                     accent: CohabiColors.purple,
                   ),
                 ),
@@ -494,7 +390,7 @@ class _PropertiesDashboardScreenState
                   child: _buildStatistic(
                     icon: Icons.euro_rounded,
                     title: 'Generando\ningresos',
-                    value: '${property.monthlyIncome.toStringAsFixed(0)} €/mes',
+                    value: '0 €/mes',
                     accent: const Color(0xFFFF951F),
                   ),
                 ),
@@ -505,7 +401,7 @@ class _PropertiesDashboardScreenState
                   child: _buildStatistic(
                     icon: Icons.warning_amber_rounded,
                     title: 'Incidencias',
-                    value: '${property.openIncidents}',
+                    value: '0',
                     accent: const Color(0xFFFF6674),
                   ),
                 ),
@@ -514,41 +410,33 @@ class _PropertiesDashboardScreenState
 
             const SizedBox(height: 18),
 
-            const Divider(
-              color: Color(0xFFE9EAF0),
-              height: 1,
-            ),
+            const Divider(color: Color(0xFFE9EAF0), height: 1),
 
             const SizedBox(height: 15),
 
             // ====================================================
             // ENTRADAS / SALIDAS
             // ====================================================
-
-            Row(
+            const Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
                   child: _EmptyEvent(
                     icon: Icons.calendar_today_outlined,
                     title: 'Próximas entradas',
-                    text: property.nextEntry == null
-                        ? 'No hay entradas programadas'
-                        : property.nextEntry!,
+                    text: 'No hay entradas programadas',
                     accent: CohabiColors.turquoise,
                   ),
                 ),
 
-                const SizedBox(width: 18),
+                SizedBox(width: 18),
 
                 Expanded(
                   child: _EmptyEvent(
                     icon: Icons.event_busy_outlined,
                     title: 'Próximas salidas',
-                    text: property.nextExit == null
-                        ? 'No hay salidas programadas'
-                        : property.nextExit!,
-                    accent: const Color(0xFFFF6674),
+                    text: 'No hay salidas programadas',
+                    accent: Color(0xFFFF6674),
                   ),
                 ),
               ],
@@ -559,9 +447,7 @@ class _PropertiesDashboardScreenState
     );
   }
 
-  Widget _buildPropertyImage(
-      _PropertySummary property,
-      ) {
+  Widget _buildPropertyImage(_PropertySummary property) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(15),
       child: Container(
@@ -570,35 +456,27 @@ class _PropertiesDashboardScreenState
         color: CohabiColors.turquoise.withOpacity(0.06),
         child: property.imageUrl != null
             ? Image.network(
-          property.imageUrl!,
-          fit: BoxFit.cover,
-          errorBuilder: (
-              context,
-              error,
-              stackTrace,
-              ) {
-            return const Icon(
-              Icons.apartment_rounded,
-              size: 40,
-              color: CohabiColors.turquoise,
-            );
-          },
-        )
+                property.imageUrl!,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return const Icon(
+                    Icons.apartment_rounded,
+                    size: 40,
+                    color: CohabiColors.turquoise,
+                  );
+                },
+              )
             : const Icon(
-          Icons.apartment_rounded,
-          size: 40,
-          color: CohabiColors.turquoise,
-        ),
+                Icons.apartment_rounded,
+                size: 40,
+                color: CohabiColors.turquoise,
+              ),
       ),
     );
   }
 
   Widget _verticalDivider() {
-    return Container(
-      width: 1,
-      height: 92,
-      color: const Color(0xFFE8EAF1),
-    );
+    return Container(width: 1, height: 92, color: const Color(0xFFE8EAF1));
   }
 
   // ============================================================
@@ -621,11 +499,7 @@ class _PropertiesDashboardScreenState
             shape: BoxShape.circle,
             color: accent.withOpacity(0.10),
           ),
-          child: Icon(
-            icon,
-            color: accent,
-            size: 21,
-          ),
+          child: Icon(icon, color: accent, size: 21),
         ),
 
         const SizedBox(height: 7),
@@ -674,24 +548,18 @@ class _PropertiesDashboardScreenState
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) =>
-            const PropertyRegisterScreen(),
+            builder: (context) => const PropertyRegisterScreen(),
           ),
         );
       },
       borderRadius: BorderRadius.circular(18),
       child: Container(
         height: 82,
-        padding: const EdgeInsets.symmetric(
-          horizontal: 20,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: const Color(0xFFCDD2E1),
-            width: 1.3,
-          ),
+          border: Border.all(color: const Color(0xFFCDD2E1), width: 1.3),
         ),
         child: Row(
           children: [
@@ -742,15 +610,12 @@ class _PropertiesDashboardScreenState
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => const OwnerApplicationsScreen()),
+          MaterialPageRoute(builder: (_) => const CohabiSelectionScreen()),
         );
       },
       borderRadius: BorderRadius.circular(18),
       child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 18,
-          vertical: 17,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 17),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(18),
           gradient: const LinearGradient(
@@ -802,11 +667,7 @@ class _PropertiesDashboardScreenState
               ),
             ),
 
-            Icon(
-              Icons.arrow_forward_rounded,
-              color: Colors.white,
-              size: 29,
-            ),
+            Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 29),
           ],
         ),
       ),
@@ -823,9 +684,7 @@ class _PropertiesDashboardScreenState
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: const Color(0xFFE2E4EC),
-        ),
+        border: Border.all(color: const Color(0xFFE2E4EC)),
       ),
       child: Column(
         children: [
@@ -860,9 +719,7 @@ class _PropertiesDashboardScreenState
 
           TextButton(
             onPressed: _refresh,
-            child: const Text(
-              'Volver a intentar',
-            ),
+            child: const Text('Volver a intentar'),
           ),
         ],
       ),
@@ -875,16 +732,11 @@ class _PropertiesDashboardScreenState
 
   Widget _buildEmptyState() {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 20,
-        vertical: 38,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 38),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: const Color(0xFFE2E4EC),
-        ),
+        border: Border.all(color: const Color(0xFFE2E4EC)),
       ),
       child: const Column(
         children: [
@@ -920,11 +772,6 @@ class _PropertySummary {
   final String city;
   final int totalRooms;
   final int availableRooms;
-  final int tenantCount;
-  final double monthlyIncome;
-  final int openIncidents;
-  final String? nextEntry;
-  final String? nextExit;
   final String? imageUrl;
 
   const _PropertySummary({
@@ -933,11 +780,6 @@ class _PropertySummary {
     required this.city,
     required this.totalRooms,
     required this.availableRooms,
-    required this.tenantCount,
-    required this.monthlyIncome,
-    required this.openIncidents,
-    required this.nextEntry,
-    required this.nextExit,
     required this.imageUrl,
   });
 }
@@ -966,11 +808,7 @@ class _EmptyEvent extends StatelessWidget {
       children: [
         Row(
           children: [
-            Icon(
-              icon,
-              color: accent,
-              size: 19,
-            ),
+            Icon(icon, color: accent, size: 19),
 
             const SizedBox(width: 7),
 

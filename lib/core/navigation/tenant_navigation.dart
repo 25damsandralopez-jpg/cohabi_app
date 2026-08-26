@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../features/applications/screens/tenant_applications_screen.dart';
 import '../../features/selection/screens/tenant_selection_gate_screen.dart';
 import '../../screens/account_screen.dart';
 import '../../screens/tenant_home_screen.dart';
-import '../../features/tenant_home/screens/tenant_my_home_screen.dart';
 
 void handleTenantNavigation(BuildContext context, int index) {
   switch (index) {
@@ -23,18 +21,10 @@ void handleTenantNavigation(BuildContext context, int index) {
       );
       return;
     case 2:
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const TenantApplicationsScreen()),
-        (_) => false,
-      );
+      _showComingSoon(context, 'Solicitudes');
       return;
     case 3:
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const TenantMyHomeScreen()),
-        (_) => false,
-      );
+      _showComingSoon(context, 'Mi Casa');
       return;
     case 4:
       Navigator.pushAndRemoveUntil(

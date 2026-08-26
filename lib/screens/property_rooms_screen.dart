@@ -52,8 +52,80 @@ class _PropertyRoomsScreenState extends State<PropertyRoomsScreen> {
       widget.roomCount,
           (index) => _RoomData(),
     );
-  }
 
+    _loadExistingRooms();
+  }
+  Future<void> _loadExistingRooms() async {
+    try {
+      final response = await Supabase.instance.client
+          .from('rooms')
+          .select(
+        'id, room_number, status, available_from, monthly_price, '
+            'deposit, reservation_price, min_stay, max_stay, '
+            'max_people, area_m2',
+      )
+          .eq('property_id', widget.propertyId);
+
+      for (final data in response) {
+        final roomNumber = data['room_number'] as int?;
+
+        if (roomNumber == null) continue;
+
+        final index = roomNumber - 1;
+
+        if (index < 0 || index >= _rooms.length) continue;
+
+        final room = _rooms[index];
+
+        room.roomId = data['id'] as String?;
+
+        room.isAvailable =
+            data['status']?.toString() == 'Disponible';
+
+        final availableFrom = data['available_from']?.toString();
+
+        if (availableFrom != null && availableFrom.isNotEmpty) {
+          room.availableFrom = DateTime.tryParse(availableFrom);
+        }
+
+        room.monthlyPrice.text =
+            data['monthly_price']?.toString() ?? '';
+
+        room.deposit.text =
+            data['deposit']?.toString() ?? '';
+
+        room.bookingAmount.text =
+            data['reservation_price']?.toString() ?? '';
+
+        room.minimumStay =
+            data['min_stay']?.toString();
+
+        room.maximumStay =
+            data['max_stay']?.toString();
+
+        room.maxPeople =
+            data['max_people'] as int? ?? 1;
+
+        room.surface.text =
+            data['area_m2']?.toString() ?? '';
+      }
+
+      if (!mounted) return;
+
+      setState(() {});
+    } catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'No se pudieron cargar las habitaciones: $error',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
   _RoomData get currentRoom => _rooms[_selectedRoom];
 
   Future<void> _selectDate() async {

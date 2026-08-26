@@ -5,7 +5,6 @@ import '../core/theme/app_colors.dart';
 import 'account_type_screen.dart';
 import 'tenant_home_screen.dart';
 import 'properties_dashboard_screen.dart';
-import '../features/owner_home/screens/owner_home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -103,7 +102,7 @@ class _LoginScreenState extends State<LoginScreen> {
           context,
           MaterialPageRoute(
             builder: (context) =>
-            const OwnerHomeScreen(),
+            const PropertiesDashboardScreen(),
           ),
               (route) => false,
         );

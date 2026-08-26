@@ -7,7 +7,7 @@ import 'screens/welcome_screen.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  var supabase = await Supabase.initialize(
+  await Supabase.initialize(
     url: 'https://ejktuacvujbzpjzxopoi.supabase.co',
     anonKey: 'sb_publishable_ruzBXCxH7wx1S8lVOO9KzA_VYSpWm5s',
   );
